@@ -1,0 +1,65 @@
+#!/usr/bin/env bash
+#
+# Run the checks CI runs, on demand.
+#
+# The GitHub Actions workflow invokes this exact script, so there is one
+# definition of "green" instead of two that drift apart. If this passes
+# locally, the pull request comes back green.
+#
+# Today that means gitleaks, over both the working tree and the commit
+# history reachable from HEAD. This repo is public and git history is
+# permanent, so a credential that lands in a commit is already leaked even
+# if the next commit removes it.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$repo_root"
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  printf 'check: gitleaks is not on PATH, so nothing was scanned.\n\n' >&2
+  printf '  brew install gitleaks\n\n' >&2
+  printf 'Other platforms: https://github.com/gitleaks/gitleaks#installing\n' >&2
+  exit 127
+fi
+
+failed=0
+
+# --verbose is what prints the file, line, and rule for each finding; without
+# it gitleaks reports only a count, which is useless for fixing anything.
+# --redact keeps the matched secret itself out of terminal scrollback and out
+# of the public Actions log.
+run_scan() {
+  local label="$1"
+  shift
+
+  printf '==> %s\n' "$label"
+
+  local status=0
+  gitleaks "$@" --redact --verbose --no-banner || status=$?
+
+  case "$status" in
+    0) ;;
+    1) failed=1 ;;
+    *)
+      printf 'check: gitleaks exited %d — that is a tool error, not a clean scan.\n' "$status" >&2
+      failed=1
+      ;;
+  esac
+
+  printf '\n'
+}
+
+run_scan 'gitleaks: working tree' dir .
+run_scan 'gitleaks: commit history' git .
+
+if [ "$failed" -ne 0 ]; then
+  printf 'FAILED. Do not push.\n\n' >&2
+  printf 'A finding in the working tree means edit the file. A finding in a\n' >&2
+  printf 'commit means rewriting history AND rotating the secret, because if\n' >&2
+  printf 'it ever reached GitHub it has already been scraped.\n' >&2
+  printf 'False positive? Annotate the line with a gitleaks:allow comment.\n' >&2
+  exit 1
+fi
+
+printf 'All checks passed.\n'
