@@ -30,8 +30,8 @@ Config that mixes shareable settings with a secret gets split: the shareable par
 To find out before you push rather than after:
 
 ```bash
-brew install gitleaks
+brew install gitleaks actionlint
 ./bin/check
 ```
 
-`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. The pull request check is the guarantee; `bin/check` is just the convenience.
+`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. It also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files — hence the second tool above — which is why it exits rather than scanning if either is missing. The pull request check is the guarantee; `bin/check` is just the convenience.
