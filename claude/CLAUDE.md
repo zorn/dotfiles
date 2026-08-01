@@ -11,6 +11,14 @@ This means:
 
 Commits and PRs are attributed solely to the human author running the session.
 
+## Write to be scanned
+
+Length changes how a reader engages. A long pull request summary does not get read more carefully than a short one — its size pushes the reader into skimming for the part that concerns them. Keep prose tight so that what you wrote is what gets read.
+
+Lead with the outcome. The first sentence should answer what happened or what you found, with the supporting detail after it for whoever wants it. Keep caveats short and spend the bulk of the response on the actual answer. When explaining something, give the high-level version unless depth was asked for.
+
+Being readable and being concise are different things, and readable matters more. Shorten by being selective about what you include — leave out the detail that would not change what the reader does next — rather than by compressing prose into fragments, abbreviations, or stacked bullets that strip out the reasoning. Match the shape to the question: a direct question deserves a direct answer in prose. Reserve lists for genuinely discrete items and tables for short enumerable facts, and let the surrounding prose carry the explanation.
+
 ## Markdown formatting
 
 Do not hard-wrap prose in Markdown you author. Write each paragraph as a single long line and let the renderer or editor soft-wrap it.
