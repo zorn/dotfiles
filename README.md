@@ -30,3 +30,14 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 Nothing in this repo is a credential, and nothing ever should be. Files are added to it one at a time, deliberately. There is no "track my whole home directory and ignore the bad parts" rule, because that leaks the file you forgot about.
 
 Config that mixes shareable settings with a secret gets split: the shareable part lives here, the secret lives in an untracked sibling file that the tracked one loads at runtime.
+
+That's a habit, though, and habits fail. [gitleaks](https://gitleaks.io) is the backstop that doesn't: it runs on every pull request as a required check, so a leak blocks the merge. It scans the working tree *and* the commit history, because this repo is public and git history is permanent — a credential that reaches GitHub is already scraped, and deleting it in the next commit fixes nothing.
+
+To find out before you push rather than after:
+
+```bash
+brew install gitleaks
+./bin/check
+```
+
+`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. There's no pre-commit hook on purpose — hooks are one `--no-verify` away from doing nothing, and they're silently missing until someone installs them. The pull request check is the guarantee; `bin/check` is just the convenience.
