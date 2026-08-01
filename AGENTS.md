@@ -28,7 +28,7 @@ claude/skills/<name>/ # one directory per hand-written Claude Code skill
 ## Writing skills
 
 - **Prefix every skill with `zorn-`.** `~/.claude/skills/` is a flat namespace shared with skills installed from elsewhere; the prefix prevents collisions.
-- **The `description` in frontmatter is the routing signal.** It is what the agent matches against to decide whether to load the skill, so it must name the trigger phrases and the concrete steps — not just the topic. See `zorn-update-elixir-deps-with-pr/SKILL.md` for the intended density.
+- **The `description` in frontmatter is the routing signal.** It is what the agent matches against to decide whether to load the skill, so it must name the trigger phrases and the concrete steps — not just the topic. See `claude/skills/zorn-update-elixir-deps-with-pr/SKILL.md` for the intended density.
 - **Structure the body as numbered steps, each ending in a `**Done when:**` line.** These are the checkpoints an agent verifies against before advancing.
 - **State prerequisites in a `## Requirements` section.** Skills assume Mike's conventions (a `precommit` mix alias, an authenticated `gh`, his PR title rules); Requirements is where that assumption gets declared instead of failing mysteriously.
 - **Scripts referenced from a `SKILL.md` must use the installed path** — `~/.claude/skills/<skill>/scripts/…` — not a repo-relative path, since the agent runs them from the user's project directory.
