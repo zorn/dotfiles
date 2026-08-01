@@ -1,0 +1,24 @@
+version: 2
+updates:
+  # The only dependencies this repo has are the actions its workflows pin, so
+  # github-actions is the only ecosystem here. Grouped into a single PR so a
+  # month's bumps arrive as one review rather than one per action.
+  #
+  # This does not cover the gitleaks version pinned in `ci.yml`, which is an
+  # env var holding a release tarball URL and its checksum, not an action
+  # reference. Dependabot cannot see it — bumping that stays manual.
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+    # Dependabot otherwise guesses a prefix from recent commit history, which
+    # is not something to leave to inference when `lint-pr.yml` rejects titles
+    # that lack a conventional-commit type. Stated explicitly, these produce
+    # `chore(deps): bump …` — a valid type and a lowercase subject.
+    commit-message:
+      prefix: "chore"
+      include: "scope"

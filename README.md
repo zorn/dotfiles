@@ -41,3 +41,11 @@ brew install gitleaks
 ```
 
 `bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. There's no pre-commit hook on purpose — hooks are one `--no-verify` away from doing nothing, and they're silently missing until someone installs them. The pull request check is the guarantee; `bin/check` is just the convenience.
+
+## Housekeeping
+
+Two more things run on pull requests, neither of which has anything to say about the contents of a file.
+
+[`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request) checks the pull request *title*: a conventional-commit type, and a subject that doesn't start with a capital. I squash-merge, so the title becomes the commit message — this is the thing that actually keeps the history readable, and I'd rather find out when I open the PR than when I merge it.
+
+[Dependabot](.github/dependabot.yml) watches the actions those workflows pin and opens one grouped pull request a month. It doesn't watch the pinned `gitleaks` release in `ci.yml`, which is a URL and a checksum rather than a dependency it understands — that bump stays manual.

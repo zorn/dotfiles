@@ -13,7 +13,8 @@ There is no build and no test suite. The two executables are `bin/link` (install
 ```
 bin/link              # installer — symlinks tracked config into $HOME
 bin/check             # the checks CI runs; run before pushing
-.github/workflows/    # CI — one job, which invokes bin/check
+.github/workflows/    # ci.yml (invokes bin/check) and lint-pr.yml (PR titles)
+.github/dependabot.yml # monthly, grouped bumps of the actions the workflows pin
 claude/skills/<name>/ # one directory per hand-written Claude Code skill
   SKILL.md            #   required: YAML frontmatter (name, description) + body
   scripts/            #   optional: helper executables the skill shells out to
@@ -29,7 +30,7 @@ claude/skills/<name>/ # one directory per hand-written Claude Code skill
 
 ## CI and `bin/check`
 
-CI is one job, `gitleaks`, defined in `.github/workflows/ci.yml`. It runs on every pull request and on pushes to `main`, and it is a required status check on the `protect-main` ruleset, so a finding blocks the merge button.
+The content check is one job, `gitleaks`, defined in `.github/workflows/ci.yml`. It runs on every pull request and on pushes to `main`, and it is a required status check on the `protect-main` ruleset, so a finding blocks the merge button. A second workflow, `lint-pr.yml`, checks the pull request *title* — see below; it is a separate concern with a separate lifecycle and deliberately not part of `bin/check`.
 
 That last part lives in repo settings, not in this repo, which means nothing here can enforce it and it can be switched off without leaving a diff. Confirm it rather than trusting this sentence: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[].type'` should list `required_status_checks`.
 
@@ -40,6 +41,25 @@ The job installs `gitleaks` and then runs `./bin/check`. That indirection is the
 The workflow pins the `gitleaks` version and its tarball checksum; `bin/check` uses whatever is on `PATH`, which locally means whatever Homebrew last installed. So the *script* never drifts but the *ruleset* can, and a local pass with a much older gitleaks is weaker evidence than a CI pass. Bumping the pin means bumping the checksum beside it, from the release's `gitleaks_<version>_checksums.txt`.
 
 There is deliberately **no pre-commit hook**. Hooks are bypassed with `--no-verify`, are silently absent until someone installs them, and tax every commit to catch something rare. The PR check is the guarantee; `bin/check` is the convenience for finding out before you push.
+
+## Pull request titles
+
+`.github/workflows/lint-pr.yml` runs [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request) against the title of every pull request: a conventional-commit type from the list in the workflow, and a subject that does not start with a capital. That is the same shape the commits use, and squash-merging makes the PR title the commit message, so this is what actually keeps `main`'s history consistent.
+
+It is **not** in `bin/check`, and the rule about never inlining a check that `bin/check` misses does not reach it — there is no pull request title to read from a local shell. That rule is about `ci.yml`.
+
+Two sharp edges:
+
+- The workflow uses `pull_request_target`, not `pull_request`, so forks still get a token. That trigger runs the workflow file from the base branch with write-capable credentials, and it is only safe here because the job never checks out or runs pull request code. **Do not add a checkout step to this workflow.**
+- `ignoreLabels` (`bot`, `ignore-semantic-pull-request`) skips validation, but `labeled` is not among the trigger types, so applying a label does not re-run the job. A red check clears on the next title edit or push, not on the label itself.
+
+## Dependabot
+
+`.github/dependabot.yml` declares one ecosystem, `github-actions`, on a monthly schedule, with every action grouped into a single pull request. There are no other dependencies to track — nothing here is built or installed from a package manager.
+
+The gap worth remembering: the `gitleaks` version and checksum in `ci.yml` are environment variables holding a release URL, not an action reference, so **Dependabot will never bump them**. That pin stays a manual chore, and the checksum has to move with the version — take both from the release's `gitleaks_<version>_checksums.txt`.
+
+Dependabot titles its own pull requests, so they have to satisfy the title rules above. Left alone it *infers* a prefix from recent commit history, which is too much to leave to inference when a wrong guess means a red check on every bump — so the config sets `commit-message.prefix: chore` and `include: scope` explicitly, yielding `chore(deps): bump …`. If a future title still trips the linter, add the `bot` label to that pull request rather than loosening `subjectPattern`.
 
 ## Writing skills
 
@@ -60,6 +80,6 @@ A genuine false positive is annotated at the line with a `gitleaks:allow` commen
 
 ## Conventions
 
-- Commits use conventional-commit prefixes with lowercase subjects (`docs: unwrap hard-wrapped prose in README`). Work lands through pull requests.
+- Commits use conventional-commit prefixes with lowercase subjects (`docs: unwrap hard-wrapped prose in README`). Work lands through pull requests, whose titles follow the same rule and are enforced by `lint-pr.yml`.
 - Markdown prose is soft-wrapped — one long line per paragraph — so editing a sentence does not reflow the diff. Existing `SKILL.md` files are hard-wrapped at ~80 columns; match whatever a file already does rather than converting it as a side effect.
 - The README's skill table is hand-maintained. Adding a skill means adding its row.
