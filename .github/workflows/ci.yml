@@ -1,8 +1,5 @@
 name: CI
 
-# `on` is quoted because YAML 1.1 parsers read a bare `on:` as the boolean
-# `true` and warn about it. Actions accepts either; the quotes keep the
-# editor quiet. See AGENTS.md — do not "clean this up".
 "on":
   pull_request:
   push:

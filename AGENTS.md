@@ -50,7 +50,7 @@ It is **not** in `bin/check`, and the rule about never inlining a check that `bi
 
 Two sharp edges:
 
-- The workflow uses `pull_request_target`, not `pull_request`, so forks still get a token. That trigger runs the workflow file from the base branch with write-capable credentials, and it is only safe here because the job never checks out or runs pull request code. **Do not add a checkout step to this workflow.**
+- **The trigger is `pull_request`, not `pull_request_target`, and that is deliberate.** The action's README suggests `pull_request_target` so that pull requests from forks still get a usable token. This workflow does not need one: its only API call is `pulls.get`, covered by the `pull-requests: read` grant, which a fork opening a pull request against a public repo already receives. `pull_request_target` would add nothing but a write-capable token in a workflow that is one careless `actions/checkout` away from running fork code with it. If someone "fixes" the trigger to match the README, this is why not.
 - `ignoreLabels` (`bot`, `ignore-semantic-pull-request`) skips validation, but `labeled` is not among the trigger types, so applying a label does not re-run the job. A red check clears on the next title edit or push, not on the label itself.
 
 ## Dependabot
