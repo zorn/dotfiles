@@ -2,13 +2,14 @@
 
 Mike Zornek's personal machine configuration, public so individual pieces can be linked to in writing.
 
-## The SKILLS symlink model
+## The symlink model
 
-`bin/link` symlinks each `claude/skills/<name>/` directory into `~/.claude/skills/`.
+`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
 
-- **Edits are live.** A skill here is the same inode the agent loads — never "reinstall" after editing, just edit.
+- **Edits are live.** A file here is the same inode the agent loads — never "reinstall" after editing, just edit.
 - **Adding a skill means re-running `bin/link`.** Adding a file inside an already-linked skill does not.
-- It prints `SKIP` rather than clobbering a real file at the destination. Extend it for any new category of dotfile instead of writing a second installer.
+- It prints `SKIP` rather than clobbering a real file at the destination. Add a category by calling `link_path` again, not by writing a second installer.
+- **`claude/CLAUDE.md` is the global file, not instructions for this repo.** A session working in `claude/` loads it a second time as directory-scoped context — harmless, since it is already loaded globally, but do not "fix" it by writing repo guidance into it. Repo guidance goes in the root `AGENTS.md`.
 
 ## CI
 
@@ -22,6 +23,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 - **`"on":` is quoted in every workflow.** YAML 1.1 parsers — including the `rlsp-yaml` language server behind the editor's YAML support — read a bare `on:` as the boolean `true` and warn. Actions accepts either form; the quotes only keep the editor quiet.
 - **`dependabot.yml` sets `commit-message.prefix` explicitly.** Left alone, Dependabot infers a prefix from recent history; a wrong guess reddens the title check on every bump.
+- **`claude/CLAUDE.md` has no `AGENTS.md` alongside it, unlike the repo root.** The root pair exists so a collaborator using some other agent finds a tool-neutral filename. Nothing in `~/.claude/` is tool-neutral, so there is nobody for the second name to serve.
 
 ## Pull request titles
 

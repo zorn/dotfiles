@@ -9,36 +9,44 @@
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-skills_src="$repo_root/claude/skills"
-skills_dest="$HOME/.claude/skills"
 
 linked=0
 skipped=0
 
-mkdir -p "$skills_dest"
+# One linker for every kind of dotfile, so adding a category is a call site
+# rather than a second copy of the "is it already ours?" logic. A real file
+# or directory at the destination is left alone and reported: it is config
+# that predates this repo, and clobbering it would destroy the only copy.
+link_path() {
+  local src="$1" dest="$2" label="$3"
 
-for src in "$skills_src"/*/; do
-  [ -d "$src" ] || continue
-  name="$(basename "$src")"
-  dest="$skills_dest/$name"
+  mkdir -p "$(dirname "$dest")"
 
   if [ -L "$dest" ]; then
-    current="$(readlink "$dest")"
-    if [ "$current" = "${src%/}" ]; then
-      printf '  ok       %s\n' "$name"
+    if [ "$(readlink "$dest")" = "$src" ]; then
+      printf '  ok       %s\n' "$label"
     else
-      ln -sfn "${src%/}" "$dest"
-      printf '  relinked %s\n' "$name"
+      ln -sfn "$src" "$dest"
+      printf '  relinked %s\n' "$label"
       linked=$((linked + 1))
     fi
   elif [ -e "$dest" ]; then
-    printf '  SKIP     %s (real file or directory already at %s)\n' "$name" "$dest"
+    printf '  SKIP     %s (real file or directory already at %s)\n' "$label" "$dest"
     skipped=$((skipped + 1))
   else
-    ln -s "${src%/}" "$dest"
-    printf '  linked   %s\n' "$name"
+    ln -s "$src" "$dest"
+    printf '  linked   %s\n' "$label"
     linked=$((linked + 1))
   fi
+}
+
+# Global instructions every Claude Code session loads, regardless of project.
+link_path "$repo_root/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md" 'CLAUDE.md'
+
+for src in "$repo_root/claude/skills"/*/; do
+  [ -d "$src" ] || continue
+  name="$(basename "$src")"
+  link_path "${src%/}" "$HOME/.claude/skills/$name" "skills/$name"
 done
 
 printf '\n%d linked, %d skipped\n' "$linked" "$skipped"

@@ -10,6 +10,10 @@ This is a reference, not a product. There's no installer, nothing is versioned f
 
 [Agent Skills](https://agentskills.io) I wrote by hand. Each is a directory with a `SKILL.md`, plus optional `scripts/` and `reference/` material.
 
+### Global Claude instructions — `claude/CLAUDE.md`
+
+The instructions every Claude Code session loads no matter which project it's in — how I want commits and pull requests written, and how I want Markdown formatted. Project-level `CLAUDE.md` files (including this repo's) layer on top of it.
+
 ## Setup
 
 ```bash
@@ -17,7 +21,7 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` symlinks each skill into `~/.claude/skills/`. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a skill in this repo takes effect immediately — no reinstall step.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
 
 ## Secrets
 
