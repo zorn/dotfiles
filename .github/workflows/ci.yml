@@ -19,17 +19,25 @@ jobs:
           # default depth-1 checkout would leave it nothing to look at.
           fetch-depth: 0
 
+      # Pinned to a version and a digest. This is the job whose whole purpose
+      # is supply-chain hygiene, so it does not pipe an unverified tarball
+      # into tar. Bumping the version means bumping the checksum with it —
+      # take both from the release's gitleaks_<version>_checksums.txt.
       - name: Install gitleaks
         env:
           GITLEAKS_VERSION: 8.30.1
+          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
         run: |
           set -euo pipefail
+          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           mkdir -p "$RUNNER_TEMP/gitleaks"
-          curl -sSfL \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz" \
-            | tar -xz -C "$RUNNER_TEMP/gitleaks" gitleaks
+          curl -sSfL -o "$RUNNER_TEMP/$tarball" \
+            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
+          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$tarball" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/gitleaks" gitleaks
           echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
 
       # The same entry point that runs locally, so there is one definition of
       # "green" rather than a CI copy that drifts from the local one.
-      - run: ./bin/check
+      - name: Run checks
+        run: ./bin/check

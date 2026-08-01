@@ -35,6 +35,8 @@ The job installs `gitleaks` and then runs `./bin/check`. That indirection is the
 
 `bin/check` scans twice — the working tree (`gitleaks dir`) and the commit history reachable from HEAD (`gitleaks git`). The history pass is why the workflow checks out with `fetch-depth: 0`; a shallow clone would silently give it nothing to scan. It exits 127 with install instructions when `gitleaks` is missing, rather than passing vacuously.
 
+The workflow pins the `gitleaks` version and its tarball checksum; `bin/check` uses whatever is on `PATH`, which locally means whatever Homebrew last installed. So the *script* never drifts but the *ruleset* can, and a local pass with a much older gitleaks is weaker evidence than a CI pass. Bumping the pin means bumping the checksum beside it, from the release's `gitleaks_<version>_checksums.txt`.
+
 There is deliberately **no pre-commit hook**. Hooks are bypassed with `--no-verify`, are silently absent until someone installs them, and tax every commit to catch something rare. The PR check is the guarantee; `bin/check` is the convenience for finding out before you push.
 
 ## Writing skills
