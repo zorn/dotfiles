@@ -102,12 +102,12 @@ git diff main -- mix.lock \
   | python3 ~/.claude/skills/elixir-deps-update/scripts/parse_mix_lock_diff.py
 ```
 
-This yields JSON `{package, app, old_version, new_version, status}` per changed
-package. `package` is the Hex registry name — use it to build the diff and
-hexdocs links. `app` is the lock's own key; it differs from `package` only
-occasionally (see Notes). If the script warns on stderr that lines look like
-Hex entries but didn't parse, stop and fix the script rather than shipping a
-PR body that silently omits those packages.
+This yields a JSON array holding one `{package, app, old_version, new_version,
+status}` object per changed package. `package` is the Hex registry name — use
+it to build the diff and hexdocs links. `app` is the lock's own key; it differs
+from `package` only occasionally (see Notes). If the script warns on stderr
+that lines look like Hex entries but didn't parse, stop and fix the script
+rather than shipping a PR body that silently omits those packages.
 
 Classify each as **direct** (named in the `deps/0` function of `mix.exs`) or
 **transitive** (everything else):
