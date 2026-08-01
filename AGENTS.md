@@ -61,6 +61,12 @@ The gap worth remembering: the `gitleaks` version and checksum in `ci.yml` are e
 
 Dependabot titles its own pull requests, so they have to satisfy the title rules above. Left alone it *infers* a prefix from recent commit history, which is too much to leave to inference when a wrong guess means a red check on every bump — so the config sets `commit-message.prefix: chore` and `include: scope` explicitly, yielding `chore(deps): bump …`. If a future title still trips the linter, add the `bot` label to that pull request rather than loosening `subjectPattern`.
 
+## `"on":` in workflow files
+
+Both workflows quote the `on` key. That is deliberate and it must stay. `on` is a boolean in YAML 1.1 and a string in YAML 1.2, and most parsers — including the `rlsp-yaml` language server behind the editor's YAML support — are 1.1, so a bare `on:` parses as the key `true` and gets flagged (`yaml11Boolean`). GitHub Actions itself accepts either, so nothing breaks in CI; the cost is a permanent warning squiggle on line 3 of every workflow.
+
+This looks like stray quoting and has already been "cleaned up" once by a reviewer who didn't know why it was there. Leave it.
+
 ## Writing skills
 
 - **Prefix every skill with `zorn-`.** `~/.claude/skills/` is a flat namespace shared with skills installed from elsewhere; the prefix prevents collisions.
