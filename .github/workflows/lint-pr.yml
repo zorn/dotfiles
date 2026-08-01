@@ -5,7 +5,7 @@ name: Lint PR
 # base branch with write-capable credentials, which is only safe because this
 # job never checks out or executes pull request code — it reads the title and
 # nothing else, with a read-only permission grant. Do not add a checkout step.
-"on":
+on:
   pull_request_target:
     types:
       - opened
@@ -16,7 +16,7 @@ permissions:
   pull-requests: read
 
 jobs:
-  main:
+  lint-pr:
     name: Validate PR title
     runs-on: ubuntu-latest
     timeout-minutes: 5
@@ -27,8 +27,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          # The conventional-commit types, newline-delimited. Same set the
-          # commits in this repo use.
+          # The conventional-commit types, newline-delimited. This is the full
+          # commitizen set rather than the handful the history actually uses,
+          # so the linter never blocks a legitimate title over a type this
+          # repo simply hasn't needed yet.
           types: |
             fix
             feat

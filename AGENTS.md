@@ -11,14 +11,14 @@ There is no build and no test suite. The two executables are `bin/link` (install
 ## Layout and the symlink model
 
 ```
-bin/link              # installer — symlinks tracked config into $HOME
-bin/check             # the checks CI runs; run before pushing
-.github/workflows/    # ci.yml (invokes bin/check) and lint-pr.yml (PR titles)
-.github/dependabot.yml # monthly, grouped bumps of the actions the workflows pin
-claude/skills/<name>/ # one directory per hand-written Claude Code skill
-  SKILL.md            #   required: YAML frontmatter (name, description) + body
-  scripts/            #   optional: helper executables the skill shells out to
-  reference/          #   optional: material the skill reads on demand
+bin/link                # installer — symlinks tracked config into $HOME
+bin/check               # the checks CI runs; run before pushing
+.github/workflows/      # ci.yml (invokes bin/check), lint-pr.yml (PR titles)
+.github/dependabot.yml  # monthly grouped bumps of the actions those pin
+claude/skills/<name>/   # one directory per hand-written Claude Code skill
+  SKILL.md              #   required: YAML frontmatter (name, description) + body
+  scripts/              #   optional: helper executables the skill shells out to
+  reference/            #   optional: material the skill reads on demand
 ```
 
 `bin/link` iterates the immediate subdirectories of `claude/skills/` and symlinks each into `~/.claude/skills/`. Consequences worth knowing:
@@ -57,7 +57,7 @@ Two sharp edges:
 
 `.github/dependabot.yml` declares one ecosystem, `github-actions`, on a monthly schedule, with every action grouped into a single pull request. There are no other dependencies to track — nothing here is built or installed from a package manager.
 
-The gap worth remembering: the `gitleaks` version and checksum in `ci.yml` are environment variables holding a release URL, not an action reference, so **Dependabot will never bump them**. That pin stays a manual chore, and the checksum has to move with the version — take both from the release's `gitleaks_<version>_checksums.txt`.
+The gap worth remembering: the `gitleaks` version and checksum in `ci.yml` are environment variables holding a release URL, not an action reference, so **Dependabot will never bump them**. That pin stays a manual chore, done as described under CI above.
 
 Dependabot titles its own pull requests, so they have to satisfy the title rules above. Left alone it *infers* a prefix from recent commit history, which is too much to leave to inference when a wrong guess means a red check on every bump — so the config sets `commit-message.prefix: chore` and `include: scope` explicitly, yielding `chore(deps): bump …`. If a future title still trips the linter, add the `bot` label to that pull request rather than loosening `subjectPattern`.
 
