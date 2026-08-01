@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           # bin/check scans commit history, not just the working tree, so the
           # default depth-1 checkout would leave it nothing to look at.
