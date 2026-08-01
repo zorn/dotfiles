@@ -34,11 +34,18 @@ The content check is one job, `gitleaks`, defined in `.github/workflows/ci.yml`.
 
 That last part lives in repo settings, not in this repo, which means nothing here can enforce it and it can be switched off without leaving a diff. Confirm it rather than trusting this sentence: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[].type'` should list `required_status_checks`.
 
-The job installs `gitleaks` and then runs `./bin/check`. That indirection is the point: **CI and the local command call the same entry point**, so there is one definition of "green" instead of two that drift. Adding a check means editing `bin/check`, not the workflow. Never inline a check into `ci.yml` that `bin/check` does not also run.
+The job installs the tools and then runs `./bin/check`. That indirection is the point: **CI and the local command call the same entry point**, so there is one definition of "green" instead of two that drift. Adding a check means editing `bin/check`, not the workflow. Never inline a check into `ci.yml` that `bin/check` does not also run, and do not add a *separate* workflow for a check either — that is the same drift wearing a different hat.
 
-`bin/check` scans twice — the working tree (`gitleaks dir`) and the commit history reachable from HEAD (`gitleaks git`). The history pass is why the workflow checks out with `fetch-depth: 0`; a shallow clone would silently give it nothing to scan. It exits 127 with install instructions when `gitleaks` is missing, rather than passing vacuously.
+The job id is `gitleaks` for historical reasons and must stay that way: it is the context name on the `protect-main` ruleset, so renaming the job silently un-requires the check. It runs more than gitleaks now.
 
-The workflow pins the `gitleaks` version and its tarball checksum; `bin/check` uses whatever is on `PATH`, which locally means whatever Homebrew last installed. So the *script* never drifts but the *ruleset* can, and a local pass with a much older gitleaks is weaker evidence than a CI pass. Bumping the pin means bumping the checksum beside it, from the release's `gitleaks_<version>_checksums.txt`.
+`bin/check` runs two tools:
+
+- **gitleaks**, twice — the working tree (`gitleaks dir`) and the commit history reachable from HEAD (`gitleaks git`). The history pass is why the workflow checks out with `fetch-depth: 0`; a shallow clone would silently give it nothing to scan.
+- **actionlint**, over `.github/workflows`. Workflow YAML has no other safety net — a bad `runs-on` label or a typo'd expression surfaces only when the workflow runs, which for a push-triggered job means after the mistake is on `main`. It also runs `shellcheck` over `run:` blocks, which is what actually guards the install scripts in `ci.yml`. No path arguments are passed, so a newly added workflow is covered the moment it exists.
+
+Missing tools are collected and reported together, then the script exits 127 rather than passing vacuously. Report *all* of them in one run — finding out about a second missing tool only after installing the first is the failure mode that shape exists to avoid.
+
+The workflow pins each tool's version and tarball checksum; `bin/check` uses whatever is on `PATH`, which locally means whatever Homebrew last installed. So the *script* never drifts but the *ruleset* can, and a local pass with a much older tool is weaker evidence than a CI pass. Bumping a pin means bumping the checksum beside it, from that release's `<tool>_<version>_checksums.txt`.
 
 There is deliberately **no pre-commit hook**. Hooks are bypassed with `--no-verify`, are silently absent until someone installs them, and tax every commit to catch something rare. The PR check is the guarantee; `bin/check` is the convenience for finding out before you push.
 
@@ -57,7 +64,7 @@ Two sharp edges:
 
 `.github/dependabot.yml` declares one ecosystem, `github-actions`, on a monthly schedule, with every action grouped into a single pull request. There are no other dependencies to track — nothing here is built or installed from a package manager.
 
-The gap worth remembering: the `gitleaks` version and checksum in `ci.yml` are environment variables holding a release URL, not an action reference, so **Dependabot will never bump them**. That pin stays a manual chore, done as described under CI above.
+The gap worth remembering: the `gitleaks` and `actionlint` pins in `ci.yml` are environment variables feeding a release URL, not action references, so **Dependabot will never bump them**. No ecosystem tracks a curl'd tarball; the checksum is not what hides them, so removing it would cost integrity and buy nothing. Those pins stay a manual chore, done as described under CI above.
 
 Dependabot titles its own pull requests, so they have to satisfy the title rules above. Left alone it *infers* a prefix from recent commit history, which is too much to leave to inference when a wrong guess means a red check on every bump — so the config sets `commit-message.prefix: chore` and `include: scope` explicitly, yielding `chore(deps): bump …`. If a future title still trips the linter, add the `bot` label to that pull request rather than loosening `subjectPattern`.
 

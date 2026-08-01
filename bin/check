@@ -6,22 +6,46 @@
 # definition of "green" instead of two that drift apart. If this passes
 # locally, the pull request comes back green.
 #
-# Today that means gitleaks, over both the working tree and the commit
-# history reachable from HEAD. This repo is public and git history is
-# permanent, so a credential that lands in a commit is already leaked even
-# if the next commit removes it.
+# Today that means two tools:
+#
+#   gitleaks   — over both the working tree and the commit history reachable
+#                from HEAD. This repo is public and git history is permanent,
+#                so a credential that lands in a commit is already leaked even
+#                if the next commit removes it.
+#   actionlint — over .github/workflows. Workflow YAML has no other safety
+#                net: a typo in an expression or a bad runs-on label is only
+#                discovered when the workflow runs, which for a push-triggered
+#                job means after the mistake is already on main. It also lints
+#                `run:` blocks via shellcheck, which is what actually guards
+#                the tool install scripts in ci.yml.
 
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-if ! command -v gitleaks >/dev/null 2>&1; then
-  printf 'check: gitleaks is not on PATH, so nothing was scanned.\n\n' >&2
-  printf '  brew install gitleaks\n\n' >&2
-  printf 'Other platforms: https://github.com/gitleaks/gitleaks#installing\n' >&2
-  exit 127
-fi
+# Both tools are checked up front and reported together, so a fresh machine
+# learns everything it is missing in one run instead of one tool per attempt.
+missing=0
+
+require() {
+  local tool="$1" install="$2" docs="$3"
+  command -v "$tool" >/dev/null 2>&1 && return 0
+
+  if [ "$missing" -eq 0 ]; then
+    printf 'check: required tools are not on PATH, so nothing was checked.\n\n' >&2
+  fi
+  printf '  %s\n' "$install" >&2
+  printf '      %s\n\n' "$docs" >&2
+  missing=1
+}
+
+require gitleaks 'brew install gitleaks' \
+  'https://github.com/gitleaks/gitleaks#installing'
+require actionlint 'brew install actionlint' \
+  'https://github.com/rhysd/actionlint/blob/main/docs/install.md'
+
+[ "$missing" -eq 0 ] || exit 127
 
 failed=0
 
@@ -53,12 +77,27 @@ run_scan() {
 run_scan 'gitleaks: working tree' dir .
 run_scan 'gitleaks: commit history' git .
 
+printf '==> actionlint: workflow YAML\n'
+actionlint_failed=0
+# No path arguments, so actionlint discovers .github/workflows itself and a
+# new workflow is covered the moment it is added. -color because CI is not a
+# TTY and would otherwise emit unhighlighted walls of text.
+actionlint -color || actionlint_failed=1
+if [ "$actionlint_failed" -ne 0 ]; then
+  failed=1
+else
+  printf 'No workflow problems found.\n'
+fi
+printf '\n'
+
 if [ "$failed" -ne 0 ]; then
   printf 'FAILED. Do not push.\n\n' >&2
-  printf 'A finding in the working tree means edit the file. A finding in a\n' >&2
-  printf 'commit means rewriting history AND rotating the secret, because if\n' >&2
-  printf 'it ever reached GitHub it has already been scraped.\n' >&2
-  printf 'False positive? Annotate the line with a gitleaks:allow comment.\n' >&2
+  printf 'A gitleaks finding in the working tree means edit the file. A finding\n' >&2
+  printf 'in a commit means rewriting history AND rotating the secret, because\n' >&2
+  printf 'if it ever reached GitHub it has already been scraped.\n' >&2
+  printf 'False positive? Annotate the line with a gitleaks:allow comment.\n\n' >&2
+  printf 'An actionlint finding means the workflow YAML is wrong — fix it here\n' >&2
+  printf 'rather than discovering it on a run against main.\n' >&2
   exit 1
 fi
 

@@ -42,6 +42,12 @@ brew install gitleaks
 
 `bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. There's no pre-commit hook on purpose — hooks are one `--no-verify` away from doing nothing, and they're silently missing until someone installs them. The pull request check is the guarantee; `bin/check` is just the convenience.
 
+It also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, which is the only thing standing between me and finding out about a typo'd `runs-on` label by watching a job fail on `main`:
+
+```bash
+brew install actionlint
+```
+
 ## Housekeeping
 
 Two more pieces of automation, neither of which is looking for leaked secrets.
