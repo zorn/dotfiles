@@ -44,8 +44,8 @@ brew install gitleaks
 
 ## Housekeeping
 
-Two more things run on pull requests, neither of which has anything to say about the contents of a file.
+Two more pieces of automation, neither of which is looking for leaked secrets.
 
-[`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request) checks the pull request *title*: a conventional-commit type, and a subject that doesn't start with a capital. I squash-merge, so the title becomes the commit message — this is the thing that actually keeps the history readable, and I'd rather find out when I open the PR than when I merge it.
+[`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request) runs on every pull request and checks its *title*: a conventional-commit type, and a subject that doesn't start with a capital. I squash-merge, so the title becomes the commit message — this is the thing that actually keeps the history readable, and I'd rather find out when I open the PR than when I merge it.
 
-[Dependabot](.github/dependabot.yml) watches the actions those workflows pin and opens one grouped pull request a month. It doesn't watch the pinned `gitleaks` release in `ci.yml`, which is a URL and a checksum rather than a dependency it understands — that bump stays manual.
+[Dependabot](.github/dependabot.yml) isn't a check at all. Once a month it reads the workflow files, finds the actions they pin, and opens a single grouped pull request for whatever has moved. It skips the pinned `gitleaks` release in `ci.yml` — that's a download URL and a checksum in an env var, not an action reference, so there's nothing there for it to recognize and that bump stays manual.
