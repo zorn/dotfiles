@@ -1,5 +1,5 @@
 ---
-name: zorn-update-elixir-deps-with-pr
+name: elixir-deps-update
 description: Update outdated Elixir (Hex) dependencies and open a pull request for the bump. Use when the user wants to update or upgrade this project's mix dependencies, refresh mix.lock, or take dependency updates — running mix hex.outdated / mix deps.update, letting the user opt out of specific packages, verifying with mix precommit, then opening a PR whose body lists direct and transitive version changes with diff.hex.pm links, version-anchored changelog links, and inline changelog highlights.
 ---
 
@@ -99,15 +99,15 @@ Extract the actual version changes from the lock diff and classify them:
 
 ```bash
 git diff main -- mix.lock \
-  | python3 ~/.claude/skills/zorn-update-elixir-deps-with-pr/scripts/parse_mix_lock_diff.py
+  | python3 ~/.claude/skills/elixir-deps-update/scripts/parse_mix_lock_diff.py
 ```
 
-This yields JSON `{package, app, old_version, new_version, status}` per changed
-package. `package` is the Hex registry name — use it to build the diff and
-hexdocs links. `app` is the lock's own key; it differs from `package` only
-occasionally (see Notes). If the script warns on stderr that lines look like
-Hex entries but didn't parse, stop and fix the script rather than shipping a
-PR body that silently omits those packages.
+This yields a JSON array holding one `{package, app, old_version, new_version,
+status}` object per changed package. `package` is the Hex registry name — use
+it to build the diff and hexdocs links. `app` is the lock's own key; it differs
+from `package` only occasionally (see Notes). If the script warns on stderr
+that lines look like Hex entries but didn't parse, stop and fix the script
+rather than shipping a PR body that silently omits those packages.
 
 Classify each as **direct** (named in the `deps/0` function of `mix.exs`) or
 **transitive** (everything else):
@@ -132,6 +132,11 @@ For each changed package `<pkg>` going `<old>` → `<new>`:
     the newest/target version so the reader lands at the top of the range
     (changelogs are reverse-chronological).
   - **Highlights:** quote the authors' entries with light cleanup; never invent.
+    Requalify anything GitHub will re-resolve against *this* repo — a bare
+    `#123` from an upstream changelog links to your own issue 123, and a bare
+    `@handle` notifies an unrelated person. Rewrite issue references as
+    `<owner>/<repo>#123` and strip `@handle` credits; see
+    [reference/finding-changelogs.md](reference/finding-changelogs.md#quoting-safely-cross-repo-references).
     If the ladder runs out, drop the changelog link, say "no changelog found",
     and keep the diff link.
 
@@ -156,7 +161,7 @@ Omit a section entirely if it has no entries — no empty headers.
 
 **Done when:** every package in the diff JSON has a diff link and either a
 version-anchored changelog link with highlights, or an explicit "no changelog
-found" note.
+found" note — and no quoted highlight carries a bare `#123` or `@handle`.
 
 ### 8. Commit and open the PR
 
@@ -164,6 +169,20 @@ Build a subject that **names the libraries updated**. Only a handful → name th
 all (`update req, jason, phoenix_live_view`). A long list → name the prominent
 ones and summarize the rest (`update phoenix, ecto, and 9 others`). Use the same
 subject for the commit and the PR title.
+
+Before pushing, scan the body file for references GitHub would resolve against
+*this* repo:
+
+```bash
+grep -nE '(^|[^A-Za-z0-9_./-])#[0-9]+' <path>        # bare issue/PR refs
+grep -nE '(^|[^A-Za-z0-9_/-])@[A-Za-z0-9-]+' <path>  # bare @mentions
+```
+
+Qualified refs (`owner/repo#123`) don't match, so every hit is either a
+verbatim upstream reference to fix or a deliberate pointer at this repo (a
+"supersedes #192" in the summary is fine). Fix the former before pushing —
+once the PR is open the bad links have already back-linked onto whatever issues
+they hit.
 
 ```bash
 git add -A
