@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#
+# Symlink tracked config from this repo into the home directory.
+#
+# Idempotent: safe to re-run after adding a new skill. Refuses to touch
+# anything that already exists as a real file or directory, so a bad run
+# can't eat config that isn't tracked here yet.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+skills_src="$repo_root/claude/skills"
+skills_dest="$HOME/.claude/skills"
+
+linked=0
+skipped=0
+
+mkdir -p "$skills_dest"
+
+for src in "$skills_src"/*/; do
+  [ -d "$src" ] || continue
+  name="$(basename "$src")"
+  dest="$skills_dest/$name"
+
+  if [ -L "$dest" ]; then
+    current="$(readlink "$dest")"
+    if [ "$current" = "${src%/}" ]; then
+      printf '  ok       %s\n' "$name"
+    else
+      ln -sfn "${src%/}" "$dest"
+      printf '  relinked %s\n' "$name"
+      linked=$((linked + 1))
+    fi
+  elif [ -e "$dest" ]; then
+    printf '  SKIP     %s (real file or directory already at %s)\n' "$name" "$dest"
+    skipped=$((skipped + 1))
+  else
+    ln -s "${src%/}" "$dest"
+    printf '  linked   %s\n' "$name"
+    linked=$((linked + 1))
+  fi
+done
+
+printf '\n%d linked, %d skipped\n' "$linked" "$skipped"
+
+if [ "$skipped" -gt 0 ]; then
+  printf '\nSkipped entries already exist outside this repo. Move them in and\n'
+  printf 'delete the original before re-running, or leave them as they are.\n'
+fi
