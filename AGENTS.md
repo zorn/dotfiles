@@ -29,7 +29,9 @@ claude/skills/<name>/ # one directory per hand-written Claude Code skill
 
 ## CI and `bin/check`
 
-CI is one job, `gitleaks`, defined in `.github/workflows/ci.yml`. It runs on every pull request and on pushes to `main`, and it is a required status check on `protect-main`, so a finding blocks the merge button.
+CI is one job, `gitleaks`, defined in `.github/workflows/ci.yml`. It runs on every pull request and on pushes to `main`, and it is a required status check on the `protect-main` ruleset, so a finding blocks the merge button.
+
+That last part lives in repo settings, not in this repo, which means nothing here can enforce it and it can be switched off without leaving a diff. Confirm it rather than trusting this sentence: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[].type'` should list `required_status_checks`.
 
 The job installs `gitleaks` and then runs `./bin/check`. That indirection is the point: **CI and the local command call the same entry point**, so there is one definition of "green" instead of two that drift. Adding a check means editing `bin/check`, not the workflow. Never inline a check into `ci.yml` that `bin/check` does not also run.
 
