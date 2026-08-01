@@ -72,6 +72,28 @@ each, and combine them into one highlight list for the package. Quote the
 authors' wording with only light cleanup — these are factual technical
 statements about what changed, not something to paraphrase.
 
+## Quoting safely: cross-repo references
+
+Changelog entries are written from inside the package's own repo, so their
+references are relative to *that* repo. Pasted verbatim into your PR body,
+GitHub re-resolves them against **yours**:
+
+- `#123` becomes a link to *your* issue 123 — nearly always an unrelated real
+  issue, and opening the PR back-links it onto that issue's timeline.
+- `@handle` notifies a real GitHub user with no connection to your repo.
+- A bare commit SHA autolinks and resolves to nothing.
+
+Rewrite each issue reference into the qualified form `<owner>/<repo>#123` using
+the package's repo — step 3 above yields it if you don't already have it. That
+renders as a normal cross-repo link and lands where the author meant. If the
+repo can't be established, drop the reference; the sentence reads fine without
+it. Strip `@handle` credits outright — a thanks-to line tells the reader of a
+dependency bump nothing.
+
+This is easy to miss precisely because quoting faithfully is the rule
+everywhere else in this step. Fidelity to the author's wording does not extend
+to their link context.
+
 ## Linking to the release with a version anchor
 
 The PR body links to the changelog you actually read. Deep-link to the release
