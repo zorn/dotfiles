@@ -134,6 +134,12 @@ other. Those go in a numbered `## Sharp Edges` section, with the affected
 definitions pointing at the entry:
 
 ```md
+## Language
+
+**First Preference**:
+The highest-ranked answer a voter gives when their vote is captured (see
+Sharp Edges #1).
+
 ## Sharp Edges
 
 1. The schema is `RankedVoting.RankedAnswer`, and ballot creation asks for
@@ -142,6 +148,9 @@ definitions pointing at the entry:
    The presentation reads better than the alignment would, and that trade is
    deliberate.
 ```
+
+Both halves matter. Without the pointer the entry is only found by a reader
+who scrolls past the glossary; without the entry the pointer dangles.
 
 Tension that sits *inside* one definition doesn't need this — write it into
 the definition, the way the Report range entry contrasts itself with "window."
