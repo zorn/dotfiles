@@ -52,53 +52,36 @@ hand off to the `domain-language` skill.
   considered and REST won for subtle reasons, record it — otherwise someone
   proposes GraphQL again in six months.
 
+## Where they live
+
+Find the directory before creating one:
+
+1. An existing `docs/adr/` or `docs/decisions/` — use it, and **match the
+   numbering already there** rather than imposing a new scheme. A repo whose
+   decisions run `1-timestamps.md`, `2-…` keeps single digits; renumbering to
+   four would break every link pointing at them, and the decisions are
+   immutable anyway.
+2. Otherwise create `docs/adr/`, with the four-digit convention.
+3. If a repo has both directories, or something else again, ask rather than
+   picking one and splitting the history in two.
+
 ## Writing one
 
-Decisions live in `docs/adr/`, named with a four-digit sequential prefix and a
-short kebab-case slug: `0001-which-rust-library.md`. Take the next number
-after the highest existing one.
+The conventions live in [reference/about.md](reference/about.md) — when to
+write, how short to keep it, the title-length limit, the numbering, and how to
+amend an earlier decision. Read it before writing, and follow it rather than
+this file: it is the copy that ships to the repo, so it stays right when the
+two would otherwise drift.
 
-**Keep the title short — 30 characters or fewer.** It's used verbatim in the
-generated docs' sidebar, which truncates with an ellipsis. A concise noun
-phrase ("Automerge Rust Library") beats a sentence.
-
-One to three sentences — the situation, the choice, the reason — is a complete
-decision, and most should be exactly that. `__template.md` offers **Problem
-Statement**, **Decision Made**, and **Consequences & Tradeoffs** as optional
-sections; reach for one only when it carries weight the summary cannot, and
-delete the headings that go unused. Filling out every heading turns a record
-into an essay nobody rereads.
-
-If `docs/adr/` doesn't exist yet, create it along with the first decision and
+If the directory doesn't exist yet, create it along with the first decision and
 seed it with [reference/about.md](reference/about.md) and
 [reference/template.md](reference/template.md) (as `about.md` and
 `__template.md`). Those two put the convention in the repo, where a human
 reader and any other agent will find it.
 
-## Amending an earlier decision
-
-**Decision documents are immutable.** Never rewrite one to match how the code
-works today — that turns a record of *why we chose* into a second, competing
-statement of *what we do*, and the two drift apart.
-
-When a new decision narrows, extends, or overturns an older one, say so in the
-new document **and add a pointer to the top of the old one**, directly under
-its title:
-
-```md
-# In-Window Secondary Views
-
-> **Scoped by [ADR 0022](0022-report-refreshes-on-demand.md)** — the Report is
-> read-only and refreshes on demand rather than on every `{:book_updated}`.
-```
-
-That pointer is the one edit an existing decision may receive. It costs a line
-and means a reader landing on the old document learns immediately that it
-isn't the end of the story, instead of reconstructing the chain backwards from
-the newest one.
-
-Non-semantic fixes — broken links, renamed paths, typos — are always fine.
-They change nothing the decision asserts.
+If the directory exists but has no `about.md`, don't add one uninvited — offer.
+A repo that has been keeping decisions without it has a convention of its own,
+and reading the existing documents tells you more than seeding a file would.
 
 ## Publishing (ex_doc projects)
 
@@ -116,7 +99,8 @@ own:
 Note what the glob excludes. `about.md` doesn't match `0*.md`, so it gets its
 own entry and leads the section; `__template.md` doesn't match either, which
 is deliberate — the template isn't a document anyone should read in published
-docs.
+docs. A repo numbering its decisions some other way needs a glob to match:
+`0*.md` only covers a four-digit scheme.
 
 If the project depends on `ex_doc` and this wiring is missing, offer the edit
 and show the diff. Make it once, on the first decision; after that the glob
