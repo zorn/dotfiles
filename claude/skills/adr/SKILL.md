@@ -61,27 +61,70 @@ Find the directory before creating one:
    decisions run `1-timestamps.md`, `2-…` keeps single digits; renumbering to
    four would break every link pointing at them, and the decisions are
    immutable anyway.
-2. Otherwise create `docs/adr/`, with the four-digit convention.
+2. Otherwise create `docs/adr/`, numbered with a four-digit sequential prefix
+   and a short kebab-case slug: `0001-which-rust-library.md`. Take the next
+   number after the highest existing one.
 3. If a repo has both directories, or something else again, ask rather than
    picking one and splitting the history in two.
 
 ## Writing one
 
-The conventions live in [reference/about.md](reference/about.md) — when to
-write, how short to keep it, the title-length limit, the numbering, and how to
-amend an earlier decision. Read it before writing, and follow it rather than
-this file: it is the copy that ships to the repo, so it stays right when the
-two would otherwise drift.
+**Keep the title to 30 characters or fewer.** It's used verbatim in the
+generated docs' sidebar, which truncates with an ellipsis. A concise noun
+phrase ("Automerge Rust Library") beats a sentence.
 
-If the directory doesn't exist yet, create it along with the first decision and
-seed it with [reference/about.md](reference/about.md) and
-[reference/template.md](reference/template.md) (as `about.md` and
-`__template.md`). Those two put the convention in the repo, where a human
-reader and any other agent will find it.
+One to three sentences — the situation, the choice, the reason — is a complete
+decision, and most should be exactly that. The template offers **Problem
+Statement**, **Decision Made**, and **Consequences & Tradeoffs** as optional
+sections; reach for one only when it carries weight the summary cannot, and
+delete the headings that go unused. Filling out every heading turns a record
+into an essay nobody rereads.
 
-If the directory exists but has no `about.md`, don't add one uninvited — offer.
-A repo that has been keeping decisions without it has a convention of its own,
-and reading the existing documents tells you more than seeding a file would.
+## Amending an earlier decision
+
+**Decision documents are immutable.** Never rewrite one to match how the code
+works today — that turns a record of *why we chose* into a second, competing
+statement of *what we do*, and the two drift apart.
+
+When a new decision narrows, extends, or overturns an older one, say so in the
+new document **and add a pointer to the top of the old one**, directly under
+its title:
+
+```md
+# In-Window Secondary Views
+
+> **Scoped by [ADR 0022](0022-report-refreshes-on-demand.md)** — the Report is a
+> read-only view and refreshes on demand rather than on every `{:book_updated}`.
+```
+
+That pointer is the one edit an existing decision may receive. It costs a line
+and means a reader landing on the old document learns immediately that it
+isn't the end of the story, instead of reconstructing the chain backwards from
+the newest one.
+
+Non-semantic fixes — broken links, renamed paths, typos — are always fine.
+They change nothing the decision asserts.
+
+## Seeding a repo
+
+The `reference/` files are **payloads, not instructions**: copy them out, don't
+read them as guidance for yourself. Everything above is what governs your own
+behaviour.
+
+When creating a decisions directory for the first time, seed it with
+`reference/seed-about.md` as `about.md` and `reference/seed-template.md` as
+`__template.md`. Those two state the same conventions for a human reader — the
+one browsing the generated docs, or working in the repo without this skill.
+
+If the directory already exists but has no `about.md`, don't add one uninvited
+— offer. A repo that has been keeping decisions without it has a convention of
+its own, and reading the existing documents tells you more than seeding a file
+would.
+
+Because the seeds restate these rules for a different audience, a change to the
+rules here has to move `reference/seed-about.md` with it. That duplication is
+deliberate: two audiences, two registers, and collapsing them makes one of the
+two read wrong.
 
 ## Publishing (ex_doc projects)
 
