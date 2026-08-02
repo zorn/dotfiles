@@ -1,0 +1,469 @@
+#!/usr/bin/env python3
+"""Validate the skills in claude/skills against the Agent Skills spec.
+
+A malformed skill fails *silently*. Claude reads `name` and `description` at
+startup and never mentions the ones it could not read, so a broken skill is
+indistinguishable from a skill that simply chose not to activate. You find out
+weeks later. This is the thing that notices instead.
+
+The spec (https://agentskills.io/specification) is small enough to check
+directly, which is why this does not lean on the reference validator: it is
+not on PyPI, and its own README says it is "intended for demonstration
+purposes only. It is not meant to be used in production."
+
+Frontmatter is read by a deliberately narrow parser rather than by PyYAML.
+Requiring a pip install before `bin/check` will run is a worse trade than
+supporting less YAML, and the narrow parser rejects two things PyYAML accepts
+quietly: an unquoted value containing `: `, and a ` #` that truncates the rest
+of the line as a comment. Both mangle a description without erroring. Quoting
+the value is the escape hatch for anything this parser will not take.
+
+Beyond the spec it checks what breaks skills in this repo specifically:
+relative links that do not resolve, links that leave the skill directory (each
+skill is symlinked into ~/.claude/skills on its own, so `../` lands nowhere),
+and Python under scripts/ that does not compile.
+
+Usage:
+    bin/check-skills                  # check claude/skills
+    bin/check-skills --self-test      # check the checker; bin/check runs this
+"""
+
+from __future__ import annotations
+
+import difflib
+import os
+import py_compile
+import re
+import sys
+import tempfile
+from pathlib import Path
+from urllib.parse import unquote
+
+SPEC_URL = "https://agentskills.io/specification"
+
+# The fields the spec defines. An unrecognised field is not an error — clients
+# are expected to add their own, and Claude Code does — but one that is nearly
+# a spec field is a typo, and a typo in a field name is silent: the field it
+# was meant to be simply goes missing.
+KNOWN_FIELDS = ("name", "description", "license", "compatibility", "metadata", "allowed-tools")
+
+# Lowercase alphanumerics in hyphen-separated runs: no uppercase, no leading
+# or trailing hyphen, no consecutive hyphens, all in one expression.
+NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+
+KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):(?:[ \t]+(.*?))?[ \t]*$")
+FENCE_RE = re.compile(r"^[ \t]*(?:```|~~~)")
+CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
+INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
+REF_LINK_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*<?([^>\s]+)>?", re.M)
+SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+
+# Characters that mean something structural to YAML at the start of a plain
+# scalar, so a value beginning with one is not the string it looks like.
+INDICATORS = "*&!%@`"
+
+
+class FrontmatterError(Exception):
+    """The frontmatter could not be read as a mapping of fields."""
+
+
+def read_quoted(value: str, line: int) -> str:
+    """Read a quoted scalar, allowing the trailing comment YAML allows after one."""
+    quote = value[0]
+    index = 1
+    while index < len(value):
+        if value[index] == "\\" and quote == '"':
+            index += 2
+            continue
+        if value[index] == quote:
+            if quote == "'" and value[index + 1 : index + 2] == "'":
+                index += 2  # '' is an escaped quote, not the end
+                continue
+            break
+        index += 1
+    else:
+        index = len(value)
+
+    if index >= len(value):
+        raise FrontmatterError(
+            f"line {line}: value opens with {quote} but never closes it"
+        )
+
+    trailing = value[index + 1 :].strip()
+    if trailing and not trailing.startswith("#"):
+        raise FrontmatterError(
+            f"line {line}: {trailing!r} follows the closing {quote} — "
+            "everything the value contains has to be inside the quotes"
+        )
+
+    inner = value[1:index]
+    return inner.replace('\\"', '"') if quote == '"' else inner.replace("''", "'")
+
+
+def read_value(raw: str | None, line: int) -> str | None:
+    """Read one scalar value, refusing YAML this checker will not read the same way."""
+    if raw is None:
+        return None
+    value = raw.strip()
+    if not value:
+        return None
+
+    if value[0] in "|>":
+        raise FrontmatterError(
+            f"line {line}: block scalars (`{value[0]}`) are not supported here — "
+            "put the value on one line, in double quotes if it contains a colon"
+        )
+    if value[0] in "[{":
+        raise FrontmatterError(
+            f"line {line}: flow collections are not supported here — "
+            "every field this repo uses is a single line of text"
+        )
+
+    if value[0] in "\"'":
+        return read_quoted(value, line)
+
+    if value[0] in INDICATORS:
+        raise FrontmatterError(
+            f"line {line}: value starts with `{value[0]}`, which is a YAML indicator "
+            "rather than text — wrap the value in double quotes"
+        )
+    if ": " in value or value.endswith(":"):
+        raise FrontmatterError(
+            f"line {line}: unquoted value contains a colon, which YAML reads as a "
+            "nested key — wrap the value in double quotes"
+        )
+    if " #" in value:
+        raise FrontmatterError(
+            f"line {line}: ` #` starts a YAML comment, so everything after it is "
+            "dropped — wrap the value in double quotes"
+        )
+    return value
+
+
+def parse_frontmatter(text: str) -> dict:
+    """Parse the leading `---` block into a mapping of fields."""
+    lines = text.splitlines()
+    if not lines or lines[0].strip() != "---":
+        raise FrontmatterError("no frontmatter — SKILL.md must start with a `---` line")
+
+    end = None
+    for index in range(1, len(lines)):
+        if lines[index].strip() in ("---", "..."):
+            end = index
+            break
+    if end is None:
+        raise FrontmatterError(
+            "the frontmatter is never closed — add a `---` line after the last field"
+        )
+
+    data: dict = {}
+    pending = None  # the key an indented block would belong to
+    for number, raw in enumerate(lines[1:end], start=2):
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+
+        match = KEY_RE.match(raw.strip())
+        if not match:
+            raise FrontmatterError(
+                f"line {number}: cannot read {raw.strip()!r} as `key: value`"
+            )
+        key = match.group(1)
+        value = read_value(match.group(2), number)
+
+        if raw[0] in " \t":
+            if pending is None or not isinstance(data.get(pending), (type(None), dict)):
+                raise FrontmatterError(
+                    f"line {number}: `{key}` is indented but belongs to nothing"
+                )
+            if data[pending] is None:
+                data[pending] = {}
+            if key in data[pending]:
+                raise FrontmatterError(f"line {number}: `{pending}.{key}` appears twice")
+            data[pending][key] = "" if value is None else value
+            continue
+
+        if key in data:
+            raise FrontmatterError(
+                f"line {number}: `{key}` appears twice — YAML keeps only the last one"
+            )
+        data[key] = value
+        pending = key if value is None else None
+
+    # A key that opened no indented block held an empty value, not a mapping.
+    return {key: ("" if value is None else value) for key, value in data.items()}
+
+
+def strip_code(text: str) -> str:
+    """Blank out code, so a link written as an example is not checked as a real one."""
+    kept = []
+    in_fence = False
+    for line in text.splitlines():
+        if FENCE_RE.match(line):
+            in_fence = not in_fence
+            kept.append("")
+            continue
+        kept.append("" if in_fence else CODE_SPAN_RE.sub("", line))
+    return "\n".join(kept)
+
+
+def link_targets(text: str):
+    body = strip_code(text)
+    for match in INLINE_LINK_RE.finditer(body):
+        yield match.group(1)
+    for match in REF_LINK_RE.finditer(body):
+        yield match.group(1)
+
+
+def check_fields(fields: dict, skill_dir: Path, fail) -> None:
+    # Only near-misses are reported. A field the spec does not define is
+    # legitimate — clients store their own — but `allowed_tools` is not a
+    # client extension, it is `allowed-tools` misspelled, and nothing at load
+    # time will say so.
+    for key in fields:
+        if key in KNOWN_FIELDS:
+            continue
+        near = difflib.get_close_matches(key, KNOWN_FIELDS, n=1, cutoff=0.8)
+        if near:
+            fail(f"frontmatter has `{key}` — did you mean `{near[0]}`?")
+
+    name = fields.get("name")
+    if name is None:
+        fail("no `name` field — without it the skill cannot be loaded at all")
+    elif not isinstance(name, str) or not name:
+        fail("`name` is empty")
+    else:
+        if len(name) > 64:
+            fail(f"`name` is {len(name)} characters; the limit is 64")
+        if not NAME_RE.match(name):
+            fail(
+                f"`name` is `{name}` — it may only be lowercase letters, digits and "
+                "single internal hyphens"
+            )
+        if name != skill_dir.name:
+            fail(
+                f"`name` is `{name}` but the directory is `{skill_dir.name}` — "
+                "the spec requires them to match"
+            )
+
+    description = fields.get("description")
+    if description is None:
+        fail("no `description` field — a skill with no description never activates")
+    elif not isinstance(description, str) or not description.strip():
+        fail("`description` is empty — a skill with no description never activates")
+    elif len(description) > 1024:
+        fail(f"`description` is {len(description)} characters; the limit is 1024")
+
+    compatibility = fields.get("compatibility")
+    if isinstance(compatibility, str) and len(compatibility) > 500:
+        fail(f"`compatibility` is {len(compatibility)} characters; the limit is 500")
+
+    metadata = fields.get("metadata")
+    if metadata not in (None, "") and not isinstance(metadata, dict):
+        fail("`metadata` must be a mapping of keys to values")
+
+
+def check_links(skill_dir: Path, fail) -> None:
+    root = skill_dir.resolve()
+    for markdown in sorted(skill_dir.rglob("*.md")):
+        where = markdown.relative_to(skill_dir)
+        for target in link_targets(markdown.read_text(encoding="utf-8")):
+            path = target.split("#", 1)[0].split("?", 1)[0]
+            if not path or SCHEME_RE.match(target) or path.startswith("/"):
+                continue
+
+            resolved = (markdown.parent / unquote(path)).resolve()
+            if resolved != root and root not in resolved.parents:
+                fail(
+                    f"{where} links to `{target}`, which leaves the skill directory — "
+                    "each skill is symlinked into ~/.claude/skills on its own, so that "
+                    "path does not exist where the skill is loaded"
+                )
+            elif not resolved.exists():
+                fail(f"{where} links to `{target}`, which does not exist")
+
+
+def check_scripts(skill_dir: Path, fail) -> None:
+    for script in sorted(skill_dir.rglob("*.py")):
+        with tempfile.TemporaryDirectory() as scratch:
+            try:
+                py_compile.compile(
+                    str(script), cfile=os.path.join(scratch, "out.pyc"), doraise=True
+                )
+            except py_compile.PyCompileError as error:
+                detail = " ".join(str(error).split())
+                fail(f"{script.relative_to(skill_dir)} does not compile: {detail}")
+
+
+def check_skill(skill_dir: Path) -> list[str]:
+    """Return every problem found in one skill directory, as sentences."""
+    problems: list[str] = []
+
+    def fail(message: str) -> None:
+        problems.append(message)
+
+    skill_md = skill_dir / "SKILL.md"
+    if not skill_md.is_file():
+        return ["no SKILL.md — a skill directory without one is not a skill"]
+
+    try:
+        fields = parse_frontmatter(skill_md.read_text(encoding="utf-8"))
+    except FrontmatterError as error:
+        fail(str(error))
+    else:
+        check_fields(fields, skill_dir, fail)
+
+    check_links(skill_dir, fail)
+    check_scripts(skill_dir, fail)
+    return problems
+
+
+def check_all(skills_dir: Path) -> int:
+    if not skills_dir.is_dir():
+        print(f"check-skills: {skills_dir} is not a directory", file=sys.stderr)
+        return 2
+
+    skill_dirs = sorted(path for path in skills_dir.iterdir() if path.is_dir())
+    if not skill_dirs:
+        print(f"check-skills: no skills in {skills_dir}", file=sys.stderr)
+        return 2
+
+    failed = 0
+    for skill_dir in skill_dirs:
+        problems = check_skill(skill_dir)
+        if not problems:
+            continue
+        failed += 1
+        print(f"{skill_dir}")
+        for problem in problems:
+            print(f"  {problem}")
+
+    if failed:
+        print(
+            f"\n{failed} of {len(skill_dirs)} skills have problems. A skill that does "
+            f"not match the spec\nfails silently at load time, so nothing else will "
+            f"tell you.\n{SPEC_URL}",
+            file=sys.stderr,
+        )
+        return 1
+
+    print(f"{len(skill_dirs)} skills checked, no problems found.")
+    return 0
+
+
+# --- self-test ------------------------------------------------------------
+#
+# A validator that never fails is the same silent failure it was written to
+# catch, so each rule gets a fixture that must trip it. Cases are
+# (directory name, files, substrings expected in the reported problems).
+
+GOOD = """---
+name: good-skill
+description: Does a thing. Use when a thing needs doing.
+---
+
+# Good
+
+See [the reference](reference/notes.md) and run `scripts/tool.py`.
+"""
+
+CASES = [
+    (
+        "good-skill",
+        {"SKILL.md": GOOD, "reference/notes.md": "# Notes\n", "scripts/tool.py": "x = 1\n"},
+        [],
+    ),
+    ("quoted", {"SKILL.md": '---\nname: quoted\ndescription: "Ratio: 1 to 2."\n---\n'}, []),
+    ("commented", {"SKILL.md": '---\nname: commented\ndescription: "A thing." # why\n---\n'}, []),
+    ("extended", {"SKILL.md": "---\nname: extended\ndescription: A thing.\nmodel: opus\n---\n"}, []),
+    ("mapped", {"SKILL.md": "---\nname: mapped\ndescription: A thing.\nmetadata:\n  author: zorn\n---\n"}, []),
+    ("blank-map", {"SKILL.md": "---\nname: blank-map\ndescription: A thing.\nmetadata:\n---\n"}, []),
+    ("spilled", {"SKILL.md": '---\nname: spilled\ndescription: "A thing." and more\n---\n'}, ["follows the closing"]),
+    ("renamed", {"SKILL.md": "---\nname: old-name\ndescription: A thing.\n---\n"}, ["directory"]),
+    ("bad--name", {"SKILL.md": "---\nname: bad--name\ndescription: A thing.\n---\n"}, ["hyphens"]),
+    ("shouty", {"SKILL.md": "---\nname: Shouty\ndescription: A thing.\n---\n"}, ["lowercase"]),
+    ("nameless", {"SKILL.md": "---\nname:\ndescription: A thing.\n---\n"}, ["`name` is empty"]),
+    ("mute", {"SKILL.md": "---\nname: mute\n---\n"}, ["no `description`"]),
+    ("windy", {"SKILL.md": f"---\nname: windy\ndescription: {'x' * 1100}\n---\n"}, ["1024"]),
+    ("bare", {"SKILL.md": "# No frontmatter\n"}, ["must start with"]),
+    ("unclosed", {"SKILL.md": "---\nname: unclosed\ndescription: A thing.\n"}, ["never closed"]),
+    ("colonic", {"SKILL.md": "---\nname: colonic\ndescription: Ratio: 1 to 2.\n---\n"}, ["colon"]),
+    ("hashed", {"SKILL.md": "---\nname: hashed\ndescription: Tags a #thing #here.\n---\n"}, ["comment"]),
+    ("typoed", {"SKILL.md": "---\nname: typoed\ndescription: A thing.\nallowed_tools: Read\n---\n"}, ["did you mean `allowed-tools`"]),
+    ("doubled", {"SKILL.md": "---\nname: doubled\nname: doubled\ndescription: A thing.\n---\n"}, ["appears twice"]),
+    ("folded", {"SKILL.md": "---\nname: folded\ndescription: >\n  A thing.\n---\n"}, ["block scalars"]),
+    (
+        "dangling",
+        {"SKILL.md": "---\nname: dangling\ndescription: A thing.\n---\n\n[gone](reference/gone.md)\n"},
+        ["does not exist"],
+    ),
+    (
+        "escaping",
+        {"SKILL.md": "---\nname: escaping\ndescription: A thing.\n---\n\n[out](../other/SKILL.md)\n"},
+        ["leaves the skill directory"],
+    ),
+    (
+        "fenced",
+        {"SKILL.md": "---\nname: fenced\ndescription: A thing.\n---\n\n```md\n[gone](reference/gone.md)\n```\n"},
+        [],
+    ),
+    (
+        "spanned",
+        {"SKILL.md": "---\nname: spanned\ndescription: A thing.\n---\n\nWrite `[gone](reference/gone.md)` to link.\n"},
+        [],
+    ),
+    (
+        "broken-script",
+        {
+            "SKILL.md": "---\nname: broken-script\ndescription: A thing.\n---\n",
+            "scripts/tool.py": "def (\n",
+        },
+        ["does not compile"],
+    ),
+    ("empty", {"README.md": "not a skill\n"}, ["no SKILL.md"]),
+]
+
+
+def self_test() -> int:
+    failures = []
+    with tempfile.TemporaryDirectory() as scratch:
+        for name, files, expected in CASES:
+            skill_dir = Path(scratch) / name
+            for relative, content in files.items():
+                path = skill_dir / relative
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_text(content, encoding="utf-8")
+
+            problems = check_skill(skill_dir)
+            joined = " ".join(problems)
+            if not expected and problems:
+                failures.append(f"{name}: expected no problems, got: {joined}")
+            for fragment in expected:
+                if fragment not in joined:
+                    failures.append(
+                        f"{name}: expected a problem mentioning {fragment!r}, got: "
+                        f"{joined or '(none)'}"
+                    )
+
+    if failures:
+        print("check-skills: the checker itself is broken:", file=sys.stderr)
+        for failure in failures:
+            print(f"  {failure}", file=sys.stderr)
+        return 1
+
+    print(f"{len(CASES)} self-test cases passed.")
+    return 0
+
+
+def main(argv: list[str]) -> int:
+    if argv and argv[0] == "--self-test":
+        return self_test()
+    if argv:
+        print(f"usage: {Path(__file__).name} [--self-test]", file=sys.stderr)
+        return 2
+
+    repo_root = Path(__file__).resolve().parent.parent
+    return check_all(repo_root / "claude" / "skills")
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

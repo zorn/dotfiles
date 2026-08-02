@@ -6,7 +6,7 @@
 # definition of "green" instead of two that drift apart. If this passes
 # locally, the pull request comes back green.
 #
-# Today that means two tools:
+# Today that means:
 #
 #   gitleaks   — over both the working tree and the commit history reachable
 #                from HEAD. This repo is public and git history is permanent,
@@ -18,13 +18,20 @@
 #                job means after the mistake is already on main. It also lints
 #                `run:` blocks via shellcheck, which is what actually guards
 #                the tool install scripts in ci.yml.
+#   bin/*      — shellcheck over the shell scripts in bin/. actionlint covers
+#                the shell inside workflow `run:` blocks and nothing covers
+#                these. (Written this way round because a comment beginning
+#                with the tool's own name parses as a shellcheck directive.)
+#   skills     — bin/check-skills over claude/skills. A skill whose
+#                frontmatter is malformed never activates and never says so,
+#                which makes it the failure most worth automating.
 
 set -euo pipefail
 
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
-# Both tools are checked up front and reported together, so a fresh machine
+# Every tool is checked up front and reported together, so a fresh machine
 # learns everything it is missing in one run instead of one tool per attempt.
 missing=0
 
@@ -44,6 +51,12 @@ require gitleaks 'brew install gitleaks' \
   'https://github.com/gitleaks/gitleaks#installing'
 require actionlint 'brew install actionlint' \
   'https://github.com/rhysd/actionlint/blob/main/docs/install.md'
+require shellcheck 'brew install shellcheck' \
+  'https://github.com/koalaman/shellcheck#installing'
+# bin/check-skills is Python, which is why python3 is a tool this needs. It has
+# no third-party dependencies, so a stock interpreter is the whole requirement.
+require python3 'brew install python' \
+  'https://www.python.org/downloads/'
 
 [ "$missing" -eq 0 ] || exit 127
 
@@ -90,6 +103,31 @@ else
 fi
 printf '\n'
 
+printf '==> shellcheck: shell scripts in bin/\n'
+# Found by shebang rather than named, so a script added to bin/ is covered the
+# moment it is added — and bin/check-skills, which is Python, is not.
+shell_scripts=()
+for candidate in bin/*; do
+  if [ -f "$candidate" ] && head -n 1 "$candidate" | grep -q '^#!.*bash'; then
+    shell_scripts+=("$candidate")
+  fi
+done
+if [ "${#shell_scripts[@]}" -gt 0 ]; then
+  if shellcheck "${shell_scripts[@]}"; then
+    printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"
+  else
+    failed=1
+  fi
+fi
+printf '\n'
+
+# The self-test runs first: a validator that cannot fail would report every
+# skill as fine, which is the same silent pass the validator exists to prevent.
+printf '==> check-skills: skill frontmatter, links and scripts\n'
+./bin/check-skills --self-test || failed=1
+./bin/check-skills || failed=1
+printf '\n'
+
 if [ "$failed" -ne 0 ]; then
   printf 'FAILED. Do not push.\n\n' >&2
   printf 'A gitleaks finding in the working tree means edit the file. A finding\n' >&2
@@ -97,7 +135,9 @@ if [ "$failed" -ne 0 ]; then
   printf 'if it ever reached GitHub it has already been scraped.\n' >&2
   printf 'False positive? Annotate the line with a gitleaks:allow comment.\n\n' >&2
   printf 'An actionlint finding means the workflow YAML is wrong — fix it here\n' >&2
-  printf 'rather than discovering it on a run against main.\n' >&2
+  printf 'rather than discovering it on a run against main.\n\n' >&2
+  printf 'A check-skills finding means a skill would not load, or would load\n' >&2
+  printf 'with a mangled description. Nothing at runtime reports either one.\n' >&2
   exit 1
 fi
 
