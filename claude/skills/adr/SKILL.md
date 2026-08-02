@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Record an architecture decision as a numbered document in docs/adr/. Use when a real trade-off has been settled and is worth writing down, when the user wants to know why something was done a certain way, or when a new decision amends an earlier one.
+description: Record an architecture decision as a numbered document in docs/adr/. Use when a real trade-off has been settled and is worth writing down, when a new decision amends or overturns an earlier one, or when another skill needs a decision recorded. Reading an existing decision is not this skill.
 ---
 
 # Architecture Decision Records
