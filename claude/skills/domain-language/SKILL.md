@@ -102,7 +102,7 @@ _Avoid_: Purchase, transaction
 **Report range**:
 How far back a Report looks — the rule fixing which Months it covers. Named
 _range_, not "window," because a window in this app is a native desktop window
-(see [ADR 0006](docs/adr/0006-multi-window-desktop-shell.md)).
+(see [ADR 0006](adr/0006-multi-window-desktop-shell.md)).
 ```
 
 **Be opinionated.** When several words exist for one concept, pick the best
@@ -118,7 +118,10 @@ Longer is warranted only when a boundary is genuinely subtle.
 
 **Link to the decision that settled a term** when there is one. That link is
 the connective tissue between this file and `docs/adr/` — it turns a
-definition into something a reader can trace back to its argument.
+definition into something a reader can trace back to its argument. Write the
+link relative to wherever the glossary itself lives: `adr/0006-….md` from
+`docs/ubiquitous_language.md`, `docs/adr/0006-….md` from a root
+`UBIQUITOUS_LANGUAGE.md`. The example above uses the former.
 
 **Group under subheadings** when natural clusters emerge. A flat list is fine
 while every term belongs to one cohesive area.
