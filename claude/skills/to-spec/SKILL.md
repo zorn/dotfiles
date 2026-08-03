@@ -13,7 +13,7 @@ metadata:
 
 This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
 
-The issue tracker and triage label vocabulary should have been provided to you — run `/setup-matt-pocock-skills` if not.
+Issues live on GitHub; publish with `gh issue create`. This skill synthesizes rather than interviews — if the decisions have not been settled yet, run `/grill` first and come back.
 
 ## Process
 
@@ -23,7 +23,7 @@ The issue tracker and triage label vocabulary should have been provided to you �
 
 Check with the user that these seams match their expectations.
 
-3. Write the spec using the template below, then publish it to the project issue tracker. Apply the `ready-for-agent` triage label - no need for additional triage.
+3. Write the spec using the template below, then publish it with `gh issue create`. Label it with whatever the repo already uses (`enhancement`, `bug`); do not invent a triage vocabulary the repo does not have.
 
 <spec-template>
 
@@ -61,7 +61,7 @@ A list of implementation decisions that were made. This can include:
 
 Do NOT include specific file paths or code snippets. They may end up being outdated very quickly.
 
-Exception: if a prototype produced a snippet that encodes a decision more precisely than prose can (state machine, reducer, schema, type shape), inline it within the relevant decision and note briefly that it came from a prototype. Trim to the decision-rich parts — not a working demo, just the important bits.
+Exception: a prototype may have produced a snippet that encodes a decision more precisely than prose can. The `prototype` skill's capture rules say how to carry one across; follow those rather than a second copy of them here.
 
 ## Testing Decisions
 

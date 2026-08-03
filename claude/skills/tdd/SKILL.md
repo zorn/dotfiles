@@ -14,7 +14,7 @@ metadata:
 
 TDD is the red → green loop. This skill is the reference that makes that loop produce tests worth keeping: what a good test is, where tests go, the anti-patterns, and the rules of the loop. Every section applies on every cycle — consult them before and during the loop, not after.
 
-When exploring the codebase, read `CONTEXT.md` (if it exists) so test names and interface vocabulary match the project's domain language, and respect ADRs in the area you're touching.
+When exploring the codebase, read the project's glossary — `docs/ubiquitous_language.md` or a root `UBIQUITOUS_LANGUAGE.md`, whichever the repo has — so test names and interface vocabulary match the project's domain language, and respect the decisions in `docs/adr/` for the area you're touching.
 
 ## What a good test is
 
@@ -24,7 +24,7 @@ See [tests.md](reference/tests.md) for examples and [mocking.md](reference/mocki
 
 ## Seams — where tests go
 
-A **seam** is the public boundary you test at: the interface where you observe behavior without reaching inside. Tests live at seams, never against internals.
+A **seam** is where a module's interface lives — the boundary you can observe behavior across without reaching inside. It is defined once, in the `codebase-design` skill; consult that for the surrounding vocabulary. Tests live at seams, never against internals.
 
 **Test only at pre-agreed seams.** Before writing any test, write down the seams under test and confirm them with the user. No test is written at an unconfirmed seam. You can't test everything — agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
 
@@ -40,4 +40,4 @@ Ask: "What's the public interface, and which seams should we test?"
 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
-- **Refactoring is not part of the loop.** It belongs to the review stage (see the `code-review` skill), not the red → green implementation cycle.
+- **Refactoring is not part of the loop.** It belongs to the review stage — hand off to `code-review` — not the red → green implementation cycle.
