@@ -64,7 +64,17 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets
 
-Publish the approved tickets as GitHub issues with `gh issue create`, in dependency order — blockers first, so each ticket's edges can reference issue numbers that already exist. Record each ticket's blockers as GitHub **issue dependencies** (`gh api repos/{owner}/{repo}/issues/{n}/dependencies/blocked_by`), and mirror them in the body's **Blocked by** section so they are readable without opening the API. Sub-issues are a separate feature expressing hierarchy, not blocking — do not reach for them here.
+Publish the approved tickets as GitHub issues with `gh issue create`, in dependency order — blockers first, so each ticket's edges can reference issue numbers that already exist. Record each ticket's blockers as GitHub **issue dependencies**, and mirror them in the body's **Blocked by** section so they stay readable without an API call. Sub-issues are a separate feature expressing hierarchy, not blocking — do not reach for them here.
+
+Creating a dependency is a `POST`, and it takes the blocker's **global id**, not its issue number — the same path with no method is a `GET` that lists dependencies and silently records nothing:
+
+```bash
+blocker_id=$(gh api repos/{owner}/{repo}/issues/<blocker-number> --jq .id)
+gh api --method POST repos/{owner}/{repo}/issues/<blocked-number>/dependencies/blocked_by \
+  -F issue_id="$blocker_id"
+```
+
+Read them back with a plain `GET` on the same path and confirm the count before moving on. A ticket whose body says "Blocked by #12" while the API says nothing looks wired and is not.
 
 Label with whatever the repo already uses; do not invent a triage vocabulary it does not have.
 

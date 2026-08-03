@@ -60,7 +60,7 @@ Opening the PR triggers an automatic Copilot review. Watch for it:
 ~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number>
 ```
 
-It emits one line per new inline review comment, review summary, or PR comment, and one per check that ends in any non-passing state — failed, cancelled, or skipped, so a crashed job does not read as silence. It remembers what it has already reported, so nothing is announced twice.
+It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is cancelled — so a crashed job does not read as silence. It remembers what it has already reported, so nothing is announced twice.
 
 **Evaluate every comment before acting on it. Copilot is a reviewer, not an authority** — it does not know this repo's conventions and has been confidently wrong about them. Declining a comment is a legitimate outcome; ignoring one is not.
 

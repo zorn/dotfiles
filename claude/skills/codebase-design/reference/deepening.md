@@ -26,7 +26,7 @@ Third-party services (Stripe, Twilio, etc.) you don't control — the one catego
 
 ## Seam discipline
 
-The one-adapter and internal-versus-external rules are in [SKILL.md](../SKILL.md); they bind here too. What is specific to deepening a cluster:
+The one-adapter and internal-versus-external rules are in [SKILL.md](../SKILL.md), and they bind here too.
 
 ## Testing strategy: replace, don't layer
 

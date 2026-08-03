@@ -49,7 +49,30 @@ for src in "$repo_root/claude/skills"/*/; do
   link_path "${src%/}" "$HOME/.claude/skills/$name" "skills/$name"
 done
 
-printf '\n%d linked, %d skipped\n' "$linked" "$skipped"
+# A renamed or deleted skill leaves its old symlink behind: link_path only ever
+# runs for directories that still exist here, so nothing else would ever mention
+# it. Report rather than delete — an orphan is harmless, and a linker that
+# removes things without being asked is a linker you cannot run casually.
+orphans=0
+for dest in "$HOME/.claude/skills"/*; do
+  [ -L "$dest" ] || continue
+  case "$(readlink "$dest")" in
+    "$repo_root"/*) ;;
+    *) continue ;;
+  esac
+  if [ ! -e "$dest" ]; then
+    printf '  orphan   skills/%s (points into this repo, but nothing is there)\n' \
+      "$(basename "$dest")"
+    orphans=$((orphans + 1))
+  fi
+done
+
+printf '\n%d linked, %d skipped, %d orphaned\n' "$linked" "$skipped" "$orphans"
+
+if [ "$orphans" -gt 0 ]; then
+  printf '\nOrphans are symlinks to skills this repo renamed or removed. Delete\n'
+  printf 'them by hand once you are sure nothing still points at the old name.\n'
+fi
 
 if [ "$skipped" -gt 0 ]; then
   printf '\nSkipped entries already exist outside this repo. Move them in and\n'

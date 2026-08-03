@@ -10,7 +10,7 @@ This is a reference, not a product. There's no installer, nothing is versioned f
 
 [Agent Skills](https://agentskills.io) I maintain. Each is a directory with a `SKILL.md`, plus optional `scripts/` and `reference/` material.
 
-Most began as forks of [mattpocock/skills](https://github.com/mattpocock/skills) and were reshaped — split, merged, or rewritten — to fit how I actually work. A forked skill records where it came from in its `metadata` frontmatter, and `LICENSE` carries the upstream notice. `elixir-deps-update` is the one written from scratch.
+All but one began as forks of [mattpocock/skills](https://github.com/mattpocock/skills) and were reshaped — split, merged, or rewritten — to fit how I actually work. Every forked skill records where it came from in its `metadata` frontmatter, and `LICENSE` carries the upstream notice. `elixir-deps-update` is the exception, written from scratch, and the only skill here with no `forked-from`.
 
 A skill with malformed frontmatter fails silently — it just never activates, with no error to notice — so every pull request validates them against the [Agent Skills spec](https://agentskills.io/specification): the `name` rules, `name` matching the directory, a non-empty `description` within the length limit, plus relative links that resolve and Python that compiles.
 

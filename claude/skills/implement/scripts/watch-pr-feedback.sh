@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #
 # Emit one line per new PR review comment, review summary, or issue comment,
-# and one per check ending in any non-passing state — failed, cancelled, or
-# skipped, so a crashed job does not read as silence. Run it after opening a
-# PR to catch the automatic Copilot review as it lands.
+# and one per check that fails or is cancelled, so a crashed job does not read
+# as silence. Run it after opening a PR to catch the automatic Copilot review
+# as it lands.
 #
 #   ~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number> [repo]
 #
@@ -42,11 +42,12 @@ while true; do
     gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
       --jq '.[] | "i\(.id)|\(.user.login) — COMMENT — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
 
-    # Every terminal check state that is not a pass, so a crashed job is not
-    # silence. A filter that only matched successes would look identical to
-    # "still running."
+    # A crashed or cancelled job must not read as silence, so both are
+    # reported. "skipping" is not: a skipped check is almost always a
+    # deliberately path-filtered or conditional job, and on a repo with any
+    # `if:`-gated workflow it would bury the real feedback every poll.
     gh pr checks "$PR" --repo "$REPO" --json name,bucket,link \
-      --jq '.[] | select(.bucket == "fail" or .bucket == "cancel" or .bucket == "skipping")
+      --jq '.[] | select(.bucket == "fail" or .bucket == "cancel")
             | "k\(.name)-\(.bucket)|CHECK \(.bucket | ascii_upcase) — \(.name) — \(.link)"' 2>/dev/null
   } | while IFS='|' read -r id rest; do
     [ -z "${id:-}" ] && continue

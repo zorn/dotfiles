@@ -1,7 +1,15 @@
 ---
 name: grill
 description: A relentless interview, asked in batched rounds, that pressure-tests a plan or design before any of it gets built.
+license: MIT
 disable-model-invocation: true
+metadata:
+  forked-from: https://github.com/mattpocock/skills
+  forked-skill: grilling
+  forked-on: "2026-08-03"
+  upstream-copyright: Copyright (c) 2026 Matt Pocock, MIT
+  editor: Mike Zornek
+  note: consolidates grilling, grill-me and grill-with-docs; body follows batch-grill-me
 ---
 
 # Grill

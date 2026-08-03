@@ -93,8 +93,9 @@ N. **<the claim in one line>** — `lib/my_app/tracking.ex:42`
    <two lines of evidence at most: the hunk, or the spec line it misses>
 ```
 
-The contract covers the numbering, the recommendation, and silence-as-agreement. Two things it does not cover, specific to a review:
+The contract covers the numbering, the recommendation, and silence-as-agreement. Three things it does not cover, specific to a review:
 
+- **`Your call` is not the default.** The contract warns against manufacturing a recommendation you do not believe; the opposite failure is reaching for `Your call` on everything, which hands the review back rather than doing it. Use it where the choice is a genuine coin flip and nowhere else.
 - **List the findings you would decline.** A sub-agent flagging something you disagree with is information; dropping it silently hides that the axis looked at all. `Decline` with a reason is the honest form.
 - **Then act on exactly what came back.** A reply of "2 decline, 5 let's talk" means fixing the rest without re-asking.
 
