@@ -32,21 +32,17 @@ nothing left silently assumed.
 
 ## How to ask a round
 
-The point of asking in rounds is that the user can read the whole thing,
-accept most of it, and spend their attention on the one or two that are
-wrong. Ask in a way that makes that cheap:
+Ask the round the way the global instructions require anything answerable to
+be presented: numbered, each with your recommended answer and a one-line
+reason, coin flips declared as coin flips, and silence standing as agreement.
+That contract is what makes a round cheaper than a conversation — the user
+reads the whole thing, accepts most of it, and spends their attention on the
+one or two that are wrong.
 
-- **Number every question**, so a reply can address one by number.
-- **Recommend, don't survey.** Each question gets your recommended answer and
-  a one-line reason. A question that lays out three options and asks which
-  one costs the user more than it costs you — you have read the code, so make
-  the call and let them overturn it.
-- **Silence is agreement.** Say so at the end of the round: anything they do
-  not mention stands as recommended. Then honor it — do not re-ask a
-  question they passed over.
-- **Flag a coin flip.** Where you genuinely have no preference, say that
-  instead of manufacturing a recommendation. "No objection" must not ratify a
-  call you were not confident making.
+Two things it does not cover, specific to interviewing:
+
+- **Never re-ask a question they passed over.** Silence settled it, and
+  re-opening it spends the trust the contract runs on.
 - **Compress the question, not the round.** Twelve questions is fine; twelve
   paragraphs is not. A question that seems to need a paragraph of setup is
   usually resting on a prerequisite you have not actually settled — ask

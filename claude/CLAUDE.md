@@ -27,6 +27,16 @@ This applies to GitHub issues, pull request bodies, comments, and Markdown docum
 
 Exceptions: match an existing convention when a file or repo is already consistently hard-wrapped, and leave code blocks, tables, and YAML frontmatter alone.
 
+## Presenting findings and decisions
+
+When you put something to me that I have to answer — review findings, design options, anything needing a call — make it answerable at a glance. The failure to avoid is a wall of detail I have to read closely before I can even tell what is being asked.
+
+Number every item, and lead each one with its claim in a single line. Supporting detail goes underneath, for the two or three I stop on.
+
+Give each item your recommended action and a one-line reason. A list of options with "what do you think?" costs me more than it costs you — you have read the code, so make the call and let me overturn it. Where you genuinely have no preference, say so plainly instead of manufacturing a recommendation; "no objection" must not ratify a call you were not confident making.
+
+Say at the end that anything I do not mention stands as recommended, and then honor it. The point is that I can accept eight of ten and spend my attention on the two that are wrong.
+
 ## US English
 
 Write US spellings — behavior, normalize, defense, analyze. This covers prose, code comments, commit messages, and documentation alike.
