@@ -1,6 +1,14 @@
 ---
 name: adr
 description: Record an architecture decision as a numbered document in docs/adr/. Use when a real trade-off has been settled and is worth writing down, when a new decision amends or overturns an earlier one, or when another skill needs a decision recorded. Reading an existing decision is not this skill.
+license: MIT
+metadata:
+  forked-from: https://github.com/mattpocock/skills
+  forked-skill: domain-modeling
+  forked-on: "2026-08-01"
+  upstream-copyright: Copyright (c) 2026 Matt Pocock, MIT
+  editor: Mike Zornek
+  note: substantially rewritten — the decision half of a two-way split
 ---
 
 # Architecture Decision Records

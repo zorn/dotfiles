@@ -1,6 +1,14 @@
 ---
 name: domain-language
 description: Build and sharpen a project's ubiquitous language. Use when the user wants to pin down domain terminology, name a concept, settle what a word means in this project, or resolve a fuzzy or overloaded term — and when another skill needs the project's vocabulary kept current.
+license: MIT
+metadata:
+  forked-from: https://github.com/mattpocock/skills
+  forked-skill: domain-modeling
+  forked-on: "2026-08-01"
+  upstream-copyright: Copyright (c) 2026 Matt Pocock, MIT
+  editor: Mike Zornek
+  note: substantially rewritten — the vocabulary half of a two-way split
 ---
 
 # Domain Language
