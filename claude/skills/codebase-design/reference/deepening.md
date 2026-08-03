@@ -12,7 +12,7 @@ Pure computation, in-memory state, no I/O. Always deepenable — merge the modul
 
 ### 2. Local-substitutable
 
-Dependencies that have local test stand-ins (PGLite for Postgres, in-memory filesystem). Deepenable if the stand-in exists. The deepened module is tested with the stand-in running in the test suite. The seam is internal; no port at the module's external interface.
+Dependencies that run for real in the test suite — Postgres behind `DataCase`'s sandbox, a temp directory for the filesystem. Deepenable when they do, and the deepened module is tested against the real thing. The seam is internal; no port at the module's external interface.
 
 ### 3. Remote but owned (Ports & Adapters)
 
@@ -20,14 +20,13 @@ Your own services across a network boundary (microservices, internal APIs). Defi
 
 Recommendation shape: *"Define a port at the seam, implement an HTTP adapter for production and an in-memory adapter for testing, so the logic sits in one deep module even though it's deployed across a network."*
 
-### 4. True external (Mock)
+### 4. True external (Fake)
 
-Third-party services (Stripe, Twilio, etc.) you don't control. The deepened module takes the external dependency as an injected port; tests provide a mock adapter.
+Third-party services (Stripe, Twilio, etc.) you don't control — the one category `tdd` says is worth faking. The deepened module takes the dependency as an injected port; tests supply a fake adapter, which in Elixir is a real module swapped in by config rather than anything a mocking library builds.
 
 ## Seam discipline
 
-- **One adapter means a hypothetical seam. Two adapters means a real one.** Don't introduce a port unless at least two adapters are justified (typically production + test). A single-adapter seam is just indirection.
-- **Internal seams vs external seams.** A deep module can have internal seams (private to its implementation, used by its own tests) as well as the external seam at its interface. Don't expose internal seams through the interface just because tests use them.
+The one-adapter and internal-versus-external rules are in [SKILL.md](../SKILL.md), and they bind here too.
 
 ## Testing strategy: replace, don't layer
 

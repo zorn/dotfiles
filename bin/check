@@ -18,10 +18,12 @@
 #                job means after the mistake is already on main. It also lints
 #                `run:` blocks via shellcheck, which is what actually guards
 #                the tool install scripts in ci.yml.
-#   bin/*      — shellcheck over the shell scripts in bin/. actionlint covers
-#                the shell inside workflow `run:` blocks and nothing covers
-#                these. (Written this way round because a comment beginning
-#                with the tool's own name parses as a shellcheck directive.)
+#   shell      — shellcheck over every bash script in bin/ and in
+#                claude/skills. actionlint covers the shell inside workflow
+#                `run:` blocks and nothing else covers these; a script shipped
+#                inside a skill is otherwise wholly unchecked. (Written this
+#                way round because a comment beginning with the tool's own
+#                name parses as a shellcheck directive.)
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -103,15 +105,17 @@ else
 fi
 printf '\n'
 
-printf '==> shellcheck: shell scripts in bin/\n'
-# Found by shebang rather than named, so a script added to bin/ is covered the
-# moment it is added — and bin/check-skills, which is Python, is not.
+printf '==> shellcheck: shell scripts\n'
+# Found by shebang rather than named, so a script is covered the moment it is
+# added — and bin/check-skills, which is Python, is not. Skills ship scripts
+# too, and a skill's script is the half of a skill nothing else validates:
+# check-skills compiles its Python and says nothing about its shell.
 shell_scripts=()
-for candidate in bin/*; do
-  if [ -f "$candidate" ] && head -n 1 "$candidate" | grep -q '^#!.*bash'; then
+while IFS= read -r candidate; do
+  if head -n 1 "$candidate" | grep -q '^#!.*bash'; then
     shell_scripts+=("$candidate")
   fi
-done
+done < <(find bin claude/skills -type f -not -name '*.py' -not -name '*.md' | sort)
 if [ "${#shell_scripts[@]}" -gt 0 ]; then
   if shellcheck "${shell_scripts[@]}"; then
     printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"

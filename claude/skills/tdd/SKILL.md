@@ -1,6 +1,6 @@
 ---
 name: tdd
-description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
+description: Test-driven development. Use when the user wants to work test-first, or wants integration tests.
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
@@ -24,7 +24,7 @@ See [tests.md](reference/tests.md) for examples and [mocking.md](reference/mocki
 
 ## Seams — where tests go
 
-A **seam** is where a module's interface lives — the boundary you can observe behavior across without reaching inside. It is defined once, in the `codebase-design` skill; consult that for the surrounding vocabulary. Tests live at seams, never against internals.
+**Seam** is defined in `codebase-design`, along with the vocabulary around it. What matters here: tests live at seams, never against internals.
 
 **Test only at pre-agreed seams.** Before writing any test, write down the seams under test and confirm them with the user. No test is written at an unconfirmed seam. You can't test everything — agreeing the seams up front is how testing effort lands on the critical paths and complex logic instead of every edge case.
 
@@ -35,11 +35,11 @@ Which seam is highest depends on what the project already has, not on what would
 ## Anti-patterns
 
 - **Implementation-coupled** — mocks internal collaborators, tests private methods, or verifies through a side channel (querying the database instead of using the interface). The tell: the test breaks when you refactor but behavior hasn't changed.
-- **Tautological** — the assertion recomputes the expected value the way the code does (`expect(add(a, b)).toBe(a + b)`, a snapshot derived by hand the same way, a constant asserted equal to itself), so it passes by construction and can never disagree with the code. Expected values must come from an independent source of truth — a known-good literal, a worked example, the spec.
+- **Tautological** — the assertion recomputes the expected value the way the code does (`assert add(a, b) == a + b`, a snapshot derived by hand the same way, a constant asserted equal to itself), so it passes by construction and can never disagree with the code. Expected values must come from an independent source of truth — a known-good literal, a worked example, the spec.
 - **Horizontal slicing** — writing all tests first, then all implementation. Bulk tests verify _imagined_ behavior: you test the _shape_ of things rather than user-facing behavior, the tests go insensitive to real changes, and you commit to test structure before understanding the implementation. Work in **vertical slices** instead — one test → one implementation → repeat, each test a **tracer bullet** that responds to what the last cycle taught you.
 
 ## Rules of the loop
 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
-- **Refactoring is not part of the loop.** It belongs to the review stage — hand off to `code-review` — not the red → green implementation cycle.
+- **Refactoring is not part of the loop.** It belongs to the review stage — hand off to `diff-review` — not the red → green implementation cycle.

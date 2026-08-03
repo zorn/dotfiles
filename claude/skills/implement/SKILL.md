@@ -30,7 +30,7 @@ git checkout main && git pull --ff-only
 git checkout -b zorn/issue-<NNN>-<short-slug>
 ```
 
-The `zorn/issue-<NNN>-` prefix is required — it is what ties the branch back to its issue, both for `code-review`'s spec axis and for anyone reading a branch list. The slug is a few kebab-case words, not the whole title.
+The `zorn/issue-<NNN>-` prefix is required — it is what ties the branch back to its issue, both for `diff-review`'s spec axis and for anyone reading a branch list. The slug is a few kebab-case words, not the whole title.
 
 Work with no issue behind it gets `zorn/<short-slug>`, and is the exception rather than the shape to aim for.
 
@@ -42,11 +42,11 @@ Run the project's typecheck and the test file under change as you go; run the fu
 
 ## 4. Review before the PR exists
 
-Run `code-review` against `main`. Reviewing here rather than after pushing is the whole point of the ordering — the diff is still cheap to change.
+Run `diff-review` against `main`. Reviewing here rather than after pushing is the whole point of the ordering — the diff is still cheap to change.
 
 Apply what it recommends. Findings arrive as a numbered decision list, and that skill's contract governs how the user's reply is read.
 
-`/code-review ultra` is the deeper multi-agent pass and is **user-triggered only** — this skill cannot launch it. When a change is large or risky enough to want it, say so and let the user type it, rather than proceeding as though the pass happened.
+`/code-review ultra` is Anthropic's deeper multi-agent cloud pass, and is **user-triggered only** — this skill cannot launch it. When a change is large or risky enough to want it, say so and let the user type it, rather than proceeding as though the pass happened. This repo's own reviewer is named `diff-review` precisely so that the two invocations cannot be confused.
 
 ## 5. Push and open the PR
 
@@ -60,7 +60,7 @@ Opening the PR triggers an automatic Copilot review. Watch for it:
 ~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number>
 ```
 
-It emits one line per new review comment, review summary, or failed check, and remembers what it has already reported so nothing is announced twice.
+It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is cancelled — so a crashed job does not read as silence. It remembers what it has already reported, so nothing is announced twice.
 
 **Evaluate every comment before acting on it. Copilot is a reviewer, not an authority** — it does not know this repo's conventions and has been confidently wrong about them. Declining a comment is a legitimate outcome; ignoring one is not.
 

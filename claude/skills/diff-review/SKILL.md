@@ -1,10 +1,11 @@
 ---
-name: code-review
+name: diff-review
 description: Review the diff since a fixed point along two axes — Standards (does it follow this repo's documented standards?) and Spec (does it do what the originating issue asked?). Use when the user wants changes reviewed, or asks to "review since X".
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
   forked-skill: code-review
+  note: renamed from code-review — the original name shadowed the native `/code-review ultra`
   forked-on: "2026-08-03"
   upstream-copyright: Copyright (c) 2026 Matt Pocock, MIT
   editor: Mike Zornek
@@ -87,16 +88,16 @@ Turn each line into a numbered item answerable at a glance, following the presen
 Each item is exactly this shape:
 
 ```
-N. **<the claim in one line>** — `path/to/file.ts:42`
+N. **<the claim in one line>** — `lib/my_app/tracking.ex:42`
    → Fix | Decline | Your call — <one-line reason>
    <two lines of evidence at most: the hunk, or the spec line it misses>
 ```
 
-Three rules make it answerable:
+The contract covers the numbering, the recommendation, and silence-as-agreement. Three things it does not cover, specific to a review:
 
-- **Recommend, don't report.** Every item gets `Fix`, `Decline`, or `Your call`. A finding you would not act on still gets listed — as `Decline`, with the reason — because a sub-agent flagging something you disagree with is information, and silently dropping it hides that the axis looked.
-- **`Your call` means a genuine coin flip**, not the default. If you know which way it should go, say so and let the user overturn you. Reaching for `Your call` on everything hands the whole review back.
-- **Then act on exactly what came back.** The contract promises that silence proceeds as recommended, so a reply of "2 decline, 5 let's talk" means fixing the rest without re-asking.
+- **`Your call` is not the default.** The contract warns against manufacturing a recommendation you do not believe; the opposite failure is reaching for `Your call` on everything, which hands the review back rather than doing it. Use it where the choice is a genuine coin flip and nowhere else.
+- **List the findings you would decline.** A sub-agent flagging something you disagree with is information; dropping it silently hides that the axis looked at all. `Decline` with a reason is the honest form.
+- **Then act on exactly what came back.** A reply of "2 decline, 5 let's talk" means fixing the rest without re-asking.
 
 End with one line per axis: how many findings, and how many are recommended `Fix`. No cross-axis winner — that is the reranking the separation exists to prevent.
 

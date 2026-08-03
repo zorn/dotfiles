@@ -1,6 +1,6 @@
 ---
 name: codebase-design
-description: Shared vocabulary for designing deep modules. Use when the user wants to design or improve a module's interface, find deepening opportunities, decide where a seam goes, make code more testable or AI-navigable, or when another skill needs the deep-module vocabulary.
+description: Shared vocabulary for designing deep modules. Use when the user wants to design or improve a module's interface, decide where a seam goes, or make code more testable — and when another skill needs the deep-module vocabulary.
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
@@ -107,19 +107,12 @@ Good interfaces make testing natural:
 
 3. **Small surface area.** Fewer functions means fewer tests; fewer arguments means simpler setup. A context exposing four functions over a schema is easier to hold and to test than one exposing twenty.
 
-## Relationships
-
-- A **Module** has exactly one **Interface** (the surface it presents to callers and tests).
-- **Depth** is a property of a **Module**, measured against its **Interface**.
-- A **Seam** is where a **Module**'s **Interface** lives.
-- An **Adapter** sits at a **Seam** and satisfies the **Interface**.
-- **Depth** produces **Leverage** for callers and **Locality** for maintainers.
-
 ## Rejected framings
 
-- **Depth as ratio of implementation-lines to interface-lines** (Ousterhout): rewards padding the implementation. We use depth-as-leverage instead.
-- **"Interface" as a `@behaviour`'s callbacks, or the set of public functions a module exports**: too narrow — interface here includes every fact a caller must know, including what a `{:error, _}` can contain and which calls must happen in order.
-- **"Boundary"**: overloaded with DDD's bounded context. Say **seam** or **interface**.
+The glossary's `_Avoid_` lines carry the rejected synonyms. These two need a reason rather than a list:
+
+- **Depth as the ratio of implementation-lines to interface-lines** (Ousterhout): rewards padding the implementation. We use depth-as-leverage instead.
+- **Interface as only the callbacks or exported functions**: too narrow. Interface here includes every fact a caller must know, down to what a `{:error, _}` can contain and which calls must happen in order.
 
 ## Going deeper
 
