@@ -1,6 +1,6 @@
 ---
 name: code-review
-description: Review the changes since a fixed point (commit, branch, tag, or merge-base) along two axes — Standards (does the code follow this repo's documented coding standards?) and Spec (does the code match what the originating issue/PRD asked for?). Runs both reviews in parallel sub-agents and reports them side by side. Use when the user wants to review a branch, a PR, work-in-progress changes, or asks to "review since X".
+description: Review the diff since a fixed point along two axes — Standards (does it follow this repo's documented standards?) and Spec (does it do what the originating issue asked?). Use when the user wants changes reviewed, or asks to "review since X".
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
@@ -96,7 +96,7 @@ Three rules make it answerable:
 
 - **Recommend, don't report.** Every item gets `Fix`, `Decline`, or `Your call`. A finding you would not act on still gets listed — as `Decline`, with the reason — because a sub-agent flagging something you disagree with is information, and silently dropping it hides that the axis looked.
 - **`Your call` means a genuine coin flip**, not the default. If you know which way it should go, say so and let the user overturn you. Reaching for `Your call` on everything hands the whole review back.
-- **Close with the bulk affordance.** State that everything unmentioned proceeds as recommended, then act on exactly that. The user should be able to reply "2 decline, 5 let's talk" and have the rest happen.
+- **Then act on exactly what came back.** The contract promises that silence proceeds as recommended, so a reply of "2 decline, 5 let's talk" means fixing the rest without re-asking.
 
 End with one line per axis: how many findings, and how many are recommended `Fix`. No cross-axis winner — that is the reranking the separation exists to prevent.
 

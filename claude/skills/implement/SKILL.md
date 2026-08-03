@@ -44,7 +44,7 @@ Run the project's typecheck and the test file under change as you go; run the fu
 
 Run `code-review` against `main`. Reviewing here rather than after pushing is the whole point of the ordering — the diff is still cheap to change.
 
-Apply what it recommends. Findings arrive as a numbered decision list, so the user's reply governs: anything they did not speak to proceeds as recommended.
+Apply what it recommends. Findings arrive as a numbered decision list, and that skill's contract governs how the user's reply is read.
 
 `/code-review ultra` is the deeper multi-agent pass and is **user-triggered only** — this skill cannot launch it. When a change is large or risky enough to want it, say so and let the user type it, rather than proceeding as though the pass happened.
 
