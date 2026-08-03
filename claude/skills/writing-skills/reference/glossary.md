@@ -24,13 +24,13 @@ _Avoid_: ability, tool, capability
 
 ### User-Invoked
 
-A skill with its **description** stripped — invisible to the agent and reachable only by the human typing its name (user-_only_, where **model-invoked** is user-_and-agent_). Trades agent-discoverability for zero **context load**. Because it has no description, nothing but the human can reach it: no other skill can fire it.
+A skill whose **description** is hidden from the agent, so it is reachable only by the human typing its name (user-_only_, where **model-invoked** is user-_and-agent_). Trades agent-discoverability for zero **context load**. The field itself is still there — the spec requires it — and becomes a line for the human to read instead of a trigger for the agent to match. Because the agent never sees it, nothing but the human can reach the skill: no other skill can fire it either.
 
 _Avoid_: procedure, workflow, command
 
 ### Description
 
-The skill's machine-readable trigger, and the one **context pointer** a **model-invoked** skill is forced to keep loaded at all times. Its mere presence _is_ the invocation axis: keep it and the skill is model-invoked (and reachable by other skills); delete it and the skill is **user-invoked**, reachable only by the human. The source of a model-invoked skill's **context load**.
+The skill's machine-readable trigger, and the one **context pointer** a **model-invoked** skill is forced to keep loaded at all times. Required by the spec, so it is never absent — what varies is who reads it, and that is the invocation axis. Exposed to the agent, it makes the skill model-invoked and is the source of its **context load**; hidden from the agent by a client opt-out, the skill is **user-invoked** and the same field is written for the human instead.
 
 _Avoid_: frontmatter, summary
 

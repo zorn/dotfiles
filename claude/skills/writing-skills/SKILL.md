@@ -41,7 +41,7 @@ Any other field is a client extension: legitimate, but not portable. `disable-mo
 
 ## Invocation
 
-Two choices, trading different costs. A **model-invoked** skill keeps its **description**, so the agent can fire it and other skills can reach it, and pays **context load** every turn. A **user-invoked** skill has no description the agent can see, so it pays nothing — and spends **cognitive load** instead, because you become the index that has to remember it exists.
+Two choices, trading different costs. A **model-invoked** skill keeps its **description**, so the agent can fire it and other skills can reach it, and pays **context load** every turn. A **user-invoked** skill keeps its description too — the spec requires one — but hidden from the agent, so it pays nothing and spends **cognitive load** instead, because you become the index that has to remember it exists.
 
 Pick model-invocation only when the agent must reach the skill on its own, or another skill must. If it only ever fires by hand, make it user-invoked. When user-invoked skills multiply past what you can hold in your head, a **router skill** is the cure.
 
