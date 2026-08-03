@@ -28,15 +28,15 @@ trim() { cut -c1-400; }
 while true; do
   {
     # Inline review comments — the ones that need a threaded reply.
-    gh api "repos/$REPO/pulls/$PR/comments?per_page=100" \
+    gh api --paginate "repos/$REPO/pulls/$PR/comments?per_page=100" \
       --jq '.[] | "c\(.id)|\(.user.login) — \(.path):\(.line // .original_line // 0) — id=\(.id) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
 
     # Review summaries (Copilot posts its overview as one of these).
-    gh api "repos/$REPO/pulls/$PR/reviews?per_page=100" \
+    gh api --paginate "repos/$REPO/pulls/$PR/reviews?per_page=100" \
       --jq '.[] | select((.body // "") != "") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
 
     # Top-level PR conversation.
-    gh api "repos/$REPO/issues/$PR/comments?per_page=100" \
+    gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
       --jq '.[] | "i\(.id)|\(.user.login) — COMMENT — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
 
     # Every terminal check state that is not a pass, so a crashed job is not

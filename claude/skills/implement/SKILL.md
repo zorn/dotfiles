@@ -57,7 +57,7 @@ Push the branch and open a real PR, not a draft. Title it as a conventional comm
 Opening the PR triggers an automatic Copilot review. Watch for it:
 
 ```
-scripts/watch-pr-feedback.sh <pr-number>
+~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number>
 ```
 
 It emits one line per new review comment, review summary, or failed check, and remembers what it has already reported so nothing is announced twice.
