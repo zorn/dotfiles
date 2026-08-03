@@ -4,7 +4,9 @@
 # failed check. Run it after opening a PR to catch the automatic Copilot
 # review as it lands.
 #
-#   scripts/watch-pr-feedback.sh <pr-number> [repo]
+#   ~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number> [repo]
+#
+# WATCH_INTERVAL (seconds, default 30) sets the poll interval.
 #
 # Each item is reported once: ids seen are recorded in a state file, so
 # re-running does not replay a review you have already worked. Delete the
@@ -16,14 +18,14 @@
 
 set -uo pipefail
 
-PR="${1:?usage: watch-pr-feedback.sh <pr-number> [repo]}"
+PR="${1:?usage: watch-pr-feedback.sh <pr-number> [repo]  (env: WATCH_INTERVAL)}"
 REPO="${2:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 INTERVAL="${WATCH_INTERVAL:-30}"
 
 STATE="${TMPDIR:-/tmp}/pr-feedback-seen-$(printf '%s' "$REPO" | tr '/' '-')-$PR.txt"
 touch "$STATE"
 
-trim() { cut -c1-400; }
+truncate_line() { cut -c1-400; }
 
 while true; do
   {
@@ -49,7 +51,7 @@ while true; do
     [ -z "${id:-}" ] && continue
     if ! grep -qxF "$id" "$STATE"; then
       printf '%s\n' "$id" >> "$STATE"
-      printf '%s\n' "$rest" | trim
+      printf '%s\n' "$rest" | truncate_line
     fi
   done
 

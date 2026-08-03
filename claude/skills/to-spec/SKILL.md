@@ -1,6 +1,6 @@
 ---
 name: to-spec
-description: Turn the current conversation into a spec and publish it to the project issue tracker — no interview, just synthesis of what you've already discussed.
+description: Turn the current conversation into a spec and publish it as a GitHub issue — synthesis of what you have already discussed, not a fresh interview.
 disable-model-invocation: true
 license: MIT
 metadata:
@@ -11,15 +11,17 @@ metadata:
   editor: Mike Zornek
 ---
 
-This skill takes the current conversation context and codebase understanding and produces a spec (you may know this document as a PRD). Do NOT interview the user — just synthesize what you already know.
+Takes the current conversation and codebase understanding and produces a spec (you may know this document as a PRD).
 
-Issues live on GitHub; publish with `gh issue create`. This skill synthesizes rather than interviews — if the decisions have not been settled yet, run `/grill` first and come back.
+**Synthesize, do not interview.** Work only from what has already been settled. If the decisions are not settled yet, say so and stop — `/grill` is the tool for settling them.
+
+Issues live on GitHub; publish with `gh issue create`.
 
 ## Process
 
 1. Explore the repo to understand the current state of the codebase, if you haven't already. Use the project's domain glossary vocabulary throughout the spec, and respect any ADRs in the area you're touching.
 
-2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam possible. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
+2. Sketch out the seams at which you're going to test the feature. Existing seams should be preferred to new ones. Use the highest seam the project already has — `tdd`'s reference notes give the ladder. If new seams are needed, propose them at the highest point you can. The fewer seams across the codebase, the better - the ideal number is one.
 
 Check with the user that these seams match their expectations.
 
@@ -59,9 +61,7 @@ A list of implementation decisions that were made. This can include:
 - API contracts
 - Specific interactions
 
-Do NOT include specific file paths or code snippets. They may end up being outdated very quickly.
-
-Exception: a prototype may have produced a snippet that encodes a decision more precisely than prose can. The `prototype` skill's capture rules say how to carry one across; follow those rather than a second copy of them here.
+Do NOT include specific file paths or code snippets — they go stale fast. The one exception is a snippet that came out of a prototype and pins a decision down; `prototype`'s capture rules say how to carry one across.
 
 ## Testing Decisions
 
