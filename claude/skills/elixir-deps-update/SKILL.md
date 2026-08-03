@@ -1,6 +1,7 @@
 ---
 name: elixir-deps-update
-description: Update outdated Elixir (Hex) dependencies and open a pull request for the bump. Use when the user wants to update or upgrade this project's mix dependencies, refresh mix.lock, or take dependency updates — running mix hex.outdated / mix deps.update, letting the user opt out of specific packages, verifying with mix precommit, then opening a PR whose body lists direct and transitive version changes with diff.hex.pm links, version-anchored changelog links, and inline changelog highlights.
+description: Update this project's Hex dependencies and open a PR documenting every version change.
+disable-model-invocation: true
 ---
 
 # Update Elixir Dependencies & Open a PR
