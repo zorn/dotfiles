@@ -12,12 +12,22 @@ metadata:
   editor: Mike Zornek
 ---
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save to the temporary directory of the user's OS - not the current workspace.
+Write a document that lets a fresh agent continue this work without reading the conversation. That is the bar the handoff is finished against: if the next session would have to ask what was already decided, it is not done.
 
-Include a "suggested skills" section in the document, which suggests skills that the agent should invoke.
+Save it to the session scratchpad directory when one is provided, otherwise to the OS temp directory. Not the workspace — a handoff is session state rather than a project artifact, and it should not turn up in a diff.
 
-Do not duplicate content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs). Reference them by path or URL instead.
+## What to write
 
-Redact any sensitive information, such as API keys, passwords, or personally identifiable information.
+Carry the state, not the story. A retelling of what happened is the thing the next agent is being spared:
 
-If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
+- **Where the work stands** — what is finished, what is half-done and exactly where it stops, what has not been started.
+- **What is blocked**, and on what.
+- **What was decided, and why** — for anything a fresh agent would otherwise reopen. Rejected approaches belong here; they are the cheapest thing to re-litigate by accident.
+- **What is still open** — questions raised and left unsettled.
+- **Which skills the next agent should invoke**, named explicitly. A user-invoked skill will not suggest itself.
+
+Reference other artifacts by path or URL rather than restating them. Specs, plans, decision documents, issues, commits, and diffs already hold their own content, and a second copy in the handoff is one that goes stale.
+
+Redact secrets and personal data — API keys, tokens, passwords, and anything identifying a person.
+
+If the user said what the next session will focus on, weight the document toward it: the parts of the state that bear on that work get the detail, the rest gets a line.
