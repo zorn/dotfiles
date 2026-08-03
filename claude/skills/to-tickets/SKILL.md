@@ -64,7 +64,7 @@ Iterate until the user approves the breakdown.
 
 ### 5. Publish the tickets
 
-Publish the approved tickets as GitHub issues with `gh issue create`, in dependency order — blockers first, so each ticket's edges can reference issue numbers that already exist. Set each ticket's **Blocked by** to those numbers, using GitHub's sub-issue relationship where the repo uses one.
+Publish the approved tickets as GitHub issues with `gh issue create`, in dependency order — blockers first, so each ticket's edges can reference issue numbers that already exist. Record each ticket's blockers as GitHub **issue dependencies** (`gh api repos/{owner}/{repo}/issues/{n}/dependencies/blocked_by`), and mirror them in the body's **Blocked by** section so they are readable without opening the API. Sub-issues are a separate feature expressing hierarchy, not blocking — do not reach for them here.
 
 Label with whatever the repo already uses; do not invent a triage vocabulary it does not have.
 

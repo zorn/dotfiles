@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 #
-# Emit one line per new PR review comment, review summary, issue comment, or
-# failed check. Run it after opening a PR to catch the automatic Copilot
-# review as it lands.
+# Emit one line per new PR review comment, review summary, or issue comment,
+# and one per check ending in any non-passing state — failed, cancelled, or
+# skipped, so a crashed job does not read as silence. Run it after opening a
+# PR to catch the automatic Copilot review as it lands.
 #
 #   ~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number> [repo]
 #

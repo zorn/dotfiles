@@ -12,7 +12,7 @@ Pure computation, in-memory state, no I/O. Always deepenable — merge the modul
 
 ### 2. Local-substitutable
 
-Dependencies that run for real in the test suite (Postgres behind `DataCase`'s sandbox, a temp directory for the filesystem). Deepenable when they do. The deepened module is tested with the stand-in running in the test suite. The seam is internal; no port at the module's external interface.
+Dependencies that run for real in the test suite — Postgres behind `DataCase`'s sandbox, a temp directory for the filesystem. Deepenable when they do, and the deepened module is tested against the real thing. The seam is internal; no port at the module's external interface.
 
 ### 3. Remote but owned (Ports & Adapters)
 
