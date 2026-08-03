@@ -45,7 +45,7 @@ If faking a boundary is awkward, the interface is usually too wide. One callback
 
 ```elixir
 # GOOD: each operation is independently fakeable
-@callback fetch_user(id :: String.t()) :: {:ok, map()} | {:error, term()}
+@callback fetch_user(user_id :: String.t()) :: {:ok, map()} | {:error, term()}
 @callback fetch_orders(user_id :: String.t()) :: {:ok, [map()]} | {:error, term()}
 
 # BAD: the fake now needs conditional logic to work out what it is being asked for
