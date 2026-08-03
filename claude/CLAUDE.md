@@ -26,3 +26,11 @@ Do not hard-wrap prose in Markdown you author. Write each paragraph as a single 
 This applies to GitHub issues, pull request bodies, comments, and Markdown documents generally. Hard-wrapped paragraphs produce noisy diffs, since editing one sentence reflows every line after it.
 
 Exceptions: match an existing convention when a file or repo is already consistently hard-wrapped, and leave code blocks, tables, and YAML frontmatter alone.
+
+## US English
+
+Write US spellings — behavior, normalize, defense, analyze. This covers prose, code comments, commit messages, and documentation alike.
+
+It is a consistency rule rather than a correctness one, so it applies to text that arrives from elsewhere too. A file adopted from a British-spelling source gets normalized when it is edited, rather than left to mix registers line by line.
+
+Leave quoted material alone, and leave identifiers alone. A field name, API parameter, or dependency that spells it the British way keeps its own spelling — changing that breaks the reference rather than tidying it.
