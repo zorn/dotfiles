@@ -30,6 +30,8 @@ A **seam** is where a module's interface lives — the boundary you can observe 
 
 Ask: "What's the public interface, and which seams should we test?"
 
+Which seam is highest depends on what the project already has, not on what would be nicest — see [the ladder in tests.md](reference/tests.md). Never add a testing dependency to reach a better seam.
+
 ## Anti-patterns
 
 - **Implementation-coupled** — mocks internal collaborators, tests private methods, or verifies through a side channel (querying the database instead of using the interface). The tell: the test breaks when you refactor but behavior hasn't changed.

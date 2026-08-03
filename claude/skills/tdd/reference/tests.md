@@ -84,7 +84,18 @@ test "success: total_cents sums the expenses" do
 end
 ```
 
-## Conventions worth keeping
+## Finding the highest seam
+
+"Test at the highest seam" means the highest one **this project already has**, which is not the same in every repo. Look before choosing, and never add a dependency to reach a nicer seam — a project that has not adopted a testing library has not asked for one.
+
+Roughly, highest first:
+
+1. **`PhoenixTest`**, when `mix.exs` already depends on it. `visit/2`, `click_button/2`, `fill_in/3`, and `assert_has/3` drive the real router, the LiveView lifecycle, and the rendered markup, so one test covers the path a user actually takes and survives almost any refactor beneath it. `local_cents` wraps this in a `FeatureCase`.
+2. **`ConnCase` with `Phoenix.LiveViewTest`** — `live/2`, `render_click/2`, `has_element?/2`. The standard Phoenix seam, present in every Phoenix project. `flick` tests its web layer here.
+3. **Context functions with `DataCase`** — the seam most business logic belongs at, and the one to prefer when the behavior under test is not about the page.
+4. **Plain functions with `ExUnit.Case, async: true`** — for anything pure. Cheapest to write and to read; use it whenever the behavior does not need the repo.
+
+A behavior is usually testable at more than one of these. Pick the highest rung that can observe it, then stop — a context test that could have been a plain function test pays for a database it never needed.
 
 - **`async: true` unless something genuinely shared prevents it** — and when it does, say why in a comment above the `use` line, since the next reader will otherwise assume it was an oversight.
 - **Fixtures over inline setup** for anything built more than once; put them in `test/support/fixtures/` and name them `<Thing>Fixture`.
