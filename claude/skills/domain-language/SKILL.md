@@ -15,7 +15,7 @@ metadata:
 
 Actively build and sharpen the project's ubiquitous language as you design.
 This is the *active* discipline — challenging terms, inventing edge-case
-scenarios, and writing definitions down the moment they crystallise. Merely
+scenarios, and writing definitions down the moment they crystallize. Merely
 *reading* the glossary for vocabulary is not this skill; that's a one-line
 habit any skill can do. This is for when you're changing the language, not
 just consuming it.

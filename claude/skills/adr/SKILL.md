@@ -117,7 +117,7 @@ They change nothing the decision asserts.
 
 The `reference/` files are **payloads, not instructions**: copy them out, don't
 read them as guidance for yourself. Everything above is what governs your own
-behaviour.
+behavior.
 
 When creating a decisions directory for the first time, seed it with
 `reference/seed-about.md` as `about.md` and `reference/seed-template.md` as
