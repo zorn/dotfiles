@@ -57,17 +57,18 @@ Variants must be **structurally different** — different layout, different info
 
 Create a single switcher component on the route:
 
-```tsx
-// pseudo-code — adapt to the project's framework
-const variant = searchParams.get('variant') ?? 'A';
-return (
-  <>
-    {variant === 'A' && <VariantA {...data} />}
-    {variant === 'B' && <VariantB {...data} />}
-    {variant === 'C' && <VariantC {...data} />}
-    <PrototypeSwitcher variants={['A','B','C']} current={variant} />
-  </>
-);
+```elixir
+# In the LiveView: the variant is just another URL param.
+def handle_params(params, _uri, socket) do
+  {:noreply, assign(socket, :variant, params["variant"] || "a")}
+end
+```
+
+```heex
+<.variant_a :if={@variant == "a"} {assigns} />
+<.variant_b :if={@variant == "b"} {assigns} />
+<.variant_c :if={@variant == "c"} {assigns} />
+<.prototype_switcher variants={~w(a b c)} current={@variant} />
 ```
 
 For sub-shape A (existing page): keep all the existing data fetching above the switcher; only the rendered subtree changes per variant.
@@ -84,10 +85,10 @@ A small fixed-position bar at the bottom-center of the screen with three pieces:
 
 Behavior:
 
-- Clicking an arrow updates the URL search param (use the framework's router — `router.replace` on Next, `navigate` on React Router, etc) so the variant is shareable and reload-stable.
+- Clicking an arrow updates the URL search param — `push_patch` in a LiveView, so `handle_params/3` picks it up without remounting and the variant stays shareable and reload-stable.
 - Keyboard: `←` and `→` arrow keys also cycle. Don't intercept arrow keys when an `<input>`, `<textarea>`, or `[contenteditable]` is focused.
 - Visually distinct from the page (e.g. high-contrast pill, subtle shadow) so it's obviously not part of the design being evaluated.
-- Hidden in production builds — gate on `process.env.NODE_ENV !== 'production'` or an equivalent check, so a stray prototype merge can't ship the bar to users.
+- Hidden outside dev — gate on `Application.get_env(:my_app, :env) == :dev` or the equivalent, so a stray prototype merge cannot ship the bar to users.
 
 Put the switcher in a single shared component so both sub-shapes can reuse it. Locate it wherever shared UI lives in the project.
 

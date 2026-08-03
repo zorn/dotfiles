@@ -58,7 +58,7 @@ The whole frame should fit on one screen.
 
 ### 5. Make it runnable in one command
 
-Add a script to the project's existing task runner (`package.json` scripts, `Makefile`, `justfile`, `pyproject.toml`). The user should run `pnpm run <prototype-name>` or equivalent — never need to remember a path.
+Add an alias to the project's task runner — `mix.exs`'s `aliases/0` in an Elixir project, otherwise a `Makefile` or `justfile` target. The user should run `mix <prototype_name>` or equivalent, never remember a path.
 
 If the host project has no task runner, just put the command at the top of the prototype's README.
 

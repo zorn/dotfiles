@@ -81,29 +81,31 @@ Good interfaces make testing natural:
 
 1. **Accept dependencies, don't create them.**
 
-   ```typescript
-   // Testable
-   function processOrder(order, paymentGateway) {}
+   ```elixir
+   # Testable — the seam is a parameter
+   def process_order(order, gateway), do: gateway.charge(order.total_cents)
 
-   // Hard to test
-   function processOrder(order) {
-     const gateway = new StripeGateway();
-   }
+   # Hard to test — the seam is compiled in
+   def process_order(order), do: MyApp.Stripe.charge(order.total_cents)
    ```
+
+   In Elixir the injected thing is usually a module resolved from config rather than a struct passed down every call — see `tdd`'s notes on faking a boundary.
 
 2. **Return results, don't produce side effects.**
 
-   ```typescript
-   // Testable
-   function calculateDiscount(cart): Discount {}
+   ```elixir
+   # Testable — the answer is the return value
+   @spec discount(Cart.t()) :: Discount.t()
+   def discount(cart)
 
-   // Hard to test
-   function applyDiscount(cart): void {
-     cart.total -= discount;
-   }
+   # Hard to test — the answer is a mutation somewhere else
+   @spec apply_discount(Cart.t()) :: :ok
+   def apply_discount(cart)
    ```
 
-3. **Small surface area.** Fewer methods = fewer tests needed. Fewer params = simpler test setup.
+   A function that returns `:ok` has told you nothing you can assert on, so the test has to go looking for the effect — which means reaching past the interface.
+
+3. **Small surface area.** Fewer functions means fewer tests; fewer arguments means simpler setup. A context exposing four functions over a schema is easier to hold and to test than one exposing twenty.
 
 ## Relationships
 
@@ -116,10 +118,10 @@ Good interfaces make testing natural:
 ## Rejected framings
 
 - **Depth as ratio of implementation-lines to interface-lines** (Ousterhout): rewards padding the implementation. We use depth-as-leverage instead.
-- **"Interface" as the TypeScript `interface` keyword or a class's public methods**: too narrow — interface here includes every fact a caller must know.
+- **"Interface" as a `@behaviour`'s callbacks, or the set of public functions a module exports**: too narrow — interface here includes every fact a caller must know, including what a `{:error, _}` can contain and which calls must happen in order.
 - **"Boundary"**: overloaded with DDD's bounded context. Say **seam** or **interface**.
 
 ## Going deeper
 
-- **Deepening a cluster given its dependencies** — see [DEEPENING.md](reference/deepening.md): dependency categories, seam discipline, and replace-don't-layer testing.
-- **Exploring alternative interfaces** — see [DESIGN-IT-TWICE.md](reference/design-it-twice.md): spin up parallel sub-agents to design the interface several radically different ways, then compare on depth, locality, and seam placement.
+- **Deepening a cluster given its dependencies** — see [deepening.md](reference/deepening.md): dependency categories, seam discipline, and replace-don't-layer testing.
+- **Exploring alternative interfaces** — see [design-it-twice.md](reference/design-it-twice.md): spin up parallel sub-agents to design the interface several radically different ways, then compare on depth, locality, and seam placement.
