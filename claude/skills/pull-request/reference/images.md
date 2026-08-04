@@ -16,20 +16,20 @@ The URL it returns is not fetchable on its own — GitHub rewrites it at render 
 
 **`data:` URIs are stripped.** The sanitizer removes the `src` attribute outright, leaving an image element with no source — a broken image rather than alt text. There is no inlining an image into a body.
 
-Two more limits worth carrying: `style` is stripped from `<img>`, so `width` and `height` are the only sizing lever, and a body with more than about ten embedded images is one the reviewer has to scroll past rather than read. List the rest by filename.
+Two more limits worth carrying. GitHub sets `max-width: 100%` on every image and strips any `style` you supply, so plain `![](url)` already fills the container and `width`/`height` on a raw `<img>` are the only way to make one *smaller* — reach for them when a thumbnail is genuinely wanted, not by default. And a body with more than about ten embedded images is one the reviewer scrolls past rather than reads; list the rest by filename.
 
 ## The fallback: an orphan branch
 
 Every API involved here is documented, and none of it touches the working checkout — no clone, no staging, no branch switch. Create a blob, a tree with no `base_tree`, a commit with no parents, and a ref:
 
 ```
-gh api repos/<owner>/<repo>/git/blobs -f content="$(base64 -i shot.png)" -f encoding=base64 --jq .sha
+gh api repos/<owner>/<repo>/git/blobs -f content="$(base64 < shot.png | tr -d '\n')" -f encoding=base64 --jq .sha
 gh api repos/<owner>/<repo>/git/trees -f 'tree[][path]=screenshots/<unique>/shot.png' -f 'tree[][mode]=100644' -f 'tree[][type]=blob' -f 'tree[][sha]=<blob-sha>' --jq .sha
 gh api repos/<owner>/<repo>/git/commits -f message="screenshots for #<pr>" -f tree=<tree-sha> --jq .sha
 gh api repos/<owner>/<repo>/git/refs -f ref=refs/heads/screenshots -f sha=<commit-sha>
 ```
 
-Reference it as `https://raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/screenshots/<unique>/shot.png`. **Pin to the commit SHA, not the branch name** — a branch URL breaks on force-push or prune, where a SHA URL survives even the branch being deleted, because the dangling commit is still served. GitHub documents no garbage-collection timing for unreachable objects, so keep the branch alive rather than relying on that. Put a unique segment in the path so a re-run cannot collide with a cached earlier image.
+Omitting `parents` is what makes it a root commit — verified, the response comes back with `"parents": []` — so the tree carries the image alone and shares no history with `main`. Reference it as `https://raw.githubusercontent.com/<owner>/<repo>/<commit-sha>/screenshots/<unique>/shot.png`. **Pin to the commit SHA, not the branch name** — a branch URL breaks on force-push or prune, where a SHA URL survives even the branch being deleted, because the dangling commit is still served. GitHub documents no garbage-collection timing for unreachable objects, so keep the branch alive rather than relying on that. Put a unique segment in the path so a re-run cannot collide with a cached earlier image.
 
 The branch never merges, so nothing lands in `main`. On a **private** repo neither mechanism renders for anyone without read access, which is correct behavior rather than a defect.
 

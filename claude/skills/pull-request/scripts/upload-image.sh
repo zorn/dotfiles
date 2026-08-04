@@ -44,11 +44,17 @@ fi
 
 name=$(basename "$file")
 
+# Percent-encode both query values. `image/svg+xml` is the case that bites:
+# a raw `+` reaches the server as a space and the upload 422s.
+urlencode() { jq -rn --arg s "$1" '$s|@uri'; }
+name_param=$(urlencode "$name")
+content_type_param=$(urlencode "$content_type")
+
 response=$(mktemp)
 trap 'rm -f "$response"' EXIT
 
 status=$(curl -sS -o "$response" -w '%{http_code}' \
-  -X POST "https://uploads.github.com/user-attachments/assets?name=${name}&content_type=${content_type}&repository_id=${repo_id}" \
+  -X POST "https://uploads.github.com/user-attachments/assets?name=${name_param}&content_type=${content_type_param}&repository_id=${repo_id}" \
   -H "Authorization: Bearer $(gh auth token)" \
   -H "Accept: application/json" \
   -H "X-GitHub-Api-Version: 2022-11-28" \
