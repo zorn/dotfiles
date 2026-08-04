@@ -50,7 +50,9 @@ Apply what it recommends. Findings arrive as a numbered decision list, and that 
 
 ## 5. Push and open the PR
 
-Push the branch and open a real PR, not a draft. Title it as a conventional commit whose subject does not start with a capital — squash-merging makes the title the commit message. The body says what changed and why, and closes the issue (`Closes #<NNN>`).
+Push the branch, then hand off to `pull-request`. It owns the body and the opening — the story, the flavor, the reviewer's evidence, and the checks that run before `gh pr create`. Pass it the issue number so it can read the work behind the change.
+
+Two things it needs from here that it cannot see on its own: open a real PR rather than a draft, and carry over anything `diff-review` surfaced in step 4 that you declined, since a declined finding is a judgment call the reviewer might overturn.
 
 ## 6. Work the Copilot feedback
 
