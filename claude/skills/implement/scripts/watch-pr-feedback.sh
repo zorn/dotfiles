@@ -27,12 +27,13 @@
 #   WATCH_FAST_WINDOW    seconds to poll fast before settling down (120) — an
 #                        automatic review usually lands inside two minutes,
 #                        which is exactly when a slow poll is most annoying
-#   WATCH_SETTLE         set to 1 to exit once the PR has gone quiet: every
-#                        check finished, at least one review in, and no new
-#                        item for WATCH_SETTLE_POLLS polls. Off by default,
-#                        because there is no signal that says "no more
-#                        feedback is coming" and guessing wrong ends the watch
-#                        early.
+#   WATCH_SETTLE         set to 1 to exit once the PR has gone quiet: the check
+#                        list fetched successfully with nothing pending, at
+#                        least one review in, no new item for
+#                        WATCH_SETTLE_POLLS polls, and WATCH_FAST_WINDOW
+#                        elapsed. Off by default, because there is no signal
+#                        that says "no more feedback is coming" and guessing
+#                        wrong ends the watch early.
 #   WATCH_SETTLE_POLLS   consecutive quiet polls before settling (default 2)
 #
 # Each item is reported once: ids seen are recorded in a state file, so
@@ -42,7 +43,7 @@
 
 set -uo pipefail
 
-PR="${1:?usage: watch-pr-feedback.sh <pr-number> [repo]  (env: WATCH_INTERVAL)}"
+PR="${1:?usage: watch-pr-feedback.sh <pr-number> [repo]  (WATCH_* env vars: see the header of this file)}"
 REPO="${2:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
 INTERVAL="${WATCH_INTERVAL:-30}"
 FAST_INTERVAL="${WATCH_FAST_INTERVAL:-10}"
@@ -97,7 +98,19 @@ while true; do
 
   # Fetched once and used for both the failure events and the status rollup,
   # so a poll costs one call here rather than two.
-  checks_json=$(gh pr checks "$PR" --repo "$REPO" --json name,bucket,link 2>/dev/null || printf '[]')
+  #
+  # No `|| fallback` on the substitution: `gh pr checks` exits 8 while any check
+  # is pending and 1 when one has failed, so a fallback would append its own
+  # output to a perfectly good array and hand jq two documents — quietly
+  # breaking the rollup in the exact case this runs in most. Validity is judged
+  # by parsing the result instead, which does not depend on those exit codes.
+  checks_json=$(gh pr checks "$PR" --repo "$REPO" --json name,bucket,link 2>/dev/null)
+  if printf '%s' "$checks_json" | jq -e 'type == "array"' >/dev/null 2>&1; then
+    checks_ok=1
+  else
+    checks_ok=0
+    checks_json='[]'
+  fi
 
   {
     # Inline review comments — the ones that need a threaded reply.
@@ -143,6 +156,8 @@ while true; do
   pending=$(printf '%s' "$checks_json" | jq -r '[.[] | select(.bucket == "pending")] | length' 2>/dev/null || printf '0')
   rollup=$(printf '%s' "$checks_json" | jq -r '[group_by(.bucket)[] | "\(length) \(.[0].bucket)"] | join(", ")' 2>/dev/null)
   [ -z "$rollup" ] && rollup='no checks yet'
+  # An unreachable API reads as "unknown", never as "nothing failed".
+  [ "$checks_ok" -eq 0 ] && rollup='unavailable (fetch failed)'
 
   reviews_seen=$(seen_count r)
 
@@ -154,7 +169,15 @@ while true; do
 
   # A settled watch ends on stdout, not in silence: under Monitor that final
   # line is the notification saying the watch is over rather than stalled.
+  #
+  # `checks_ok` gates this so a transient network, auth, or rate-limit failure
+  # cannot read as "no checks pending" and end the watch on a PR whose CI is
+  # still running. The elapsed floor is the same caution one step earlier: it
+  # keeps the watch alive through the window where CI has not registered a
+  # check yet, which is otherwise indistinguishable from a repo that has none.
   if [ "$SETTLE" != '0' ] &&
+    [ "$checks_ok" -eq 1 ] &&
+    [ "$elapsed" -ge "$FAST_WINDOW" ] &&
     [ "${pending:-1}" -eq 0 ] &&
     [ "${reviews_seen:-0}" -gt 0 ] &&
     [ "$quiet_polls" -ge "$SETTLE_POLLS" ]; then
