@@ -17,7 +17,11 @@ Length changes how a reader engages. A long pull request summary does not get re
 
 Lead with the outcome. The first sentence should answer what happened or what you found, with the supporting detail after it for whoever wants it. Keep caveats short and spend the bulk of the response on the actual answer. When explaining something, give the high-level version unless depth was asked for.
 
-Being readable and being concise are different things, and readable matters more. Shorten by being selective about what you include — leave out the detail that would not change what the reader does next — rather than by compressing prose into fragments, abbreviations, or stacked bullets that strip out the reasoning. Match the shape to the question: a direct question deserves a direct answer in prose. Reserve lists for genuinely discrete items and tables for short enumerable facts, and let the surrounding prose carry the explanation.
+Being readable and being concise are different things, and readable matters more. Shorten by being selective about what you include — leave out the detail that would not change what the reader does next — rather than by compressing prose into fragments, abbreviations, or stacked bullets. Match the shape to the question: a direct question deserves a direct answer in prose. Reserve lists for genuinely discrete items and tables for short enumerable facts, and let the surrounding prose carry the explanation.
+
+Build each sentence to carry one idea, in the spirit of ASD-STE100 Simplified Technical English — the aerospace controlled-language standard for documentation a non-native reader must not misread. Adopt its writing rules, not its restricted dictionary: prefer short sentences, the active voice, and the present tense, and hold subordinate clauses down. Use one term for one concept, rather than naming the same thing an "issue" on one line and a "ticket" on the next. This governs the sentence; the paragraphs above govern what to include and in what order.
+
+Neither being selective nor tightening sentences means cutting the reasoning — trim ambiguity and drop inert detail, but keep the clause that carries the why. This holds across prose, ADRs, PR summaries, and code comments alike.
 
 ## Markdown formatting
 
