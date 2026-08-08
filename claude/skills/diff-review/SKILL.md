@@ -95,7 +95,7 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 
 - The full diff command and commit list.
 - The list of prose-standard files you found in step 4, **plus the prose baseline from step 4** pasted in full — the sub-agent has no other access to it.
-- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line> | <claim in one line> | <grammar|length|noise> | <the comment or doc text it turns on, at most two lines>`. Cover (a) grammar, awkward phrasing, and British spelling in any comment or doc the diff touches; (b) any function doc or inline comment longer than its content justifies — challenge length aggressively, since the tooling that wrote this copy runs verbose; (c) comments that only restate the code, tagged `noise` for deletion. Leave identifiers and quoted text alone, and skip Markdown docs that are deliberately thorough. Return nothing if you find nothing."
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line> | <claim in one line> | <grammar|length|noise> | <the comment or doc text it turns on, at most two lines>`. Cover (a) grammar, awkward phrasing, and British spelling in any comment or doc the diff touches; (b) any function doc or inline comment longer than its content justifies — challenge length aggressively, since the tooling that wrote this copy runs verbose; (c) comments that only restate the code, tagged `noise` for deletion. Leave identifiers and quoted text alone. Exempt deliberately thorough Markdown docs from the length and noise checks, but still flag their grammar. Return nothing if you find nothing."
 
 ### 6. Present the findings as a decision list
 
@@ -112,8 +112,8 @@ Each item leads with a colored dot for the recommendation, so the eye lands on w
 Each item is exactly this shape:
 
 ```
-🔴 N. **<the claim in one line>** — `lib/my_app/tracking.ex:42`
-   → Fix — <one-line reason>
+<dot> N. **<the claim in one line>** — `lib/my_app/tracking.ex:42`
+   → <Fix | Keep | Weigh> — <one-line reason>
    <two lines of evidence at most: the hunk, or the spec line it misses>
 ```
 
