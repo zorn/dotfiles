@@ -1,6 +1,6 @@
 ---
 name: diff-review
-description: Review the diff since a fixed point along two axes — Standards (does it follow this repo's documented standards?) and Spec (does it do what the originating issue asked?). Use when the user wants changes reviewed, or asks to "review since X".
+description: Review the diff since a fixed point along three axes — Standards (does it follow this repo's documented standards?), Spec (does it do what the originating issue asked?), and Prose (are the comments and docs grammatical, and no longer than they need to be?). Use when the user wants changes reviewed, or asks to "review since X".
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
@@ -11,12 +11,13 @@ metadata:
   editor: Mike Zornek
 ---
 
-Two-axis review of the diff between `HEAD` and a fixed point the user supplies:
+Three-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
 - **Standards** — does the code conform to this repo's documented coding standards?
 - **Spec** — does the code faithfully implement the originating issue / PRD / spec?
+- **Prose** — are the comments and docs grammatical, and does every function doc and inline comment earn its length?
 
-Both axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
+All three axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
 
 ## Process
 
@@ -26,7 +27,7 @@ Whatever the user said is the fixed point — a commit SHA, branch name, tag, `m
 
 Capture the diff command once: `git diff <fixed-point>...HEAD` (three-dot, so the comparison is against the merge-base). Also note the list of commits via `git log <fixed-point>..HEAD --oneline`.
 
-Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here — not inside two parallel sub-agents.
+Before going further, confirm the fixed point resolves (`git rev-parse <fixed-point>`) and the diff is non-empty. A bad ref or empty diff should fail here — not inside the parallel sub-agents.
 
 ### 2. Identify the spec source
 
@@ -61,9 +62,20 @@ Each smell reads *what it is* → *how to fix*; match it against the diff:
 - **Middle Man** — a class or function that mostly just delegates onward. → cut it, call the real target direct.
 - **Refused Bequest** — a subclass or implementer that ignores or overrides most of what it inherits. → drop the inheritance, use composition.
 
-### 4. Spawn both sub-agents in parallel
+### 4. Identify the prose standard
 
-Send a single message with two `Agent` tool calls. Use the `general-purpose` subagent for both.
+Anything the repo documents about how prose should read — a `STYLE.md`, a writing section in `CONTRIBUTING.md`. On top of that, the Prose axis always carries the **prose baseline** below, so it applies even when a repo documents nothing. The same two rules bind it as the smell baseline: a documented repo standard overrides, and every call is a judgment ("possible verbosity"), never a hard violation.
+
+The baseline has two concerns:
+
+- **Register and grammar** — across every comment, doc comment, and Markdown doc the diff touches: flag grammar errors, awkward phrasing, and British spellings (behaviour → behavior). Leave identifiers and quoted material alone; changing those breaks a reference rather than tidying it.
+- **Length is the default suspect** — challenge every function doc and inline comment: can it be shorter, or deleted? A comment earns its bytes only by carrying the *why*; one that restates what the code plainly does is noise, and the fix is to delete it, not trim it. Split multi-clause comment sentences in the spirit of ASD-STE100 — one idea per sentence, active voice. This concern is for code-level copy, so do not shorten a Markdown doc that is deliberately thorough.
+
+Boundary with Standards: a murky function *name* is Standards (Mysterious Name); a verbose *sentence* in its doc is Prose.
+
+### 5. Spawn all three sub-agents in parallel
+
+Send a single message with three `Agent` tool calls. Use the `general-purpose` subagent for all three.
 
 **Standards sub-agent prompt** — include:
 
@@ -79,33 +91,46 @@ Send a single message with two `Agent` tool calls. Use the `general-purpose` sub
 
 If the spec is missing, skip the Spec sub-agent and note this in the final report.
 
-### 5. Present the findings as a decision list
+**Prose sub-agent prompt** — include:
+
+- The full diff command and commit list.
+- The list of prose-standard files you found in step 4, **plus the prose baseline from step 4** pasted in full — the sub-agent has no other access to it.
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line> | <claim in one line> | <grammar|length|noise> | <the comment or doc text it turns on, at most two lines>`. Cover (a) grammar, awkward phrasing, and British spelling in any comment or doc the diff touches; (b) any function doc or inline comment longer than its content justifies — challenge length aggressively, since the tooling that wrote this copy runs verbose; (c) comments that only restate the code, tagged `noise` for deletion. Leave identifiers and quoted text alone, and skip Markdown docs that are deliberately thorough. Return nothing if you find nothing."
+
+### 6. Present the findings as a decision list
 
 The sub-agents return raw finding lines, not a report. Never pass those through and never expand them back into narrative — a wall of prose findings buries the only thing the user actually has to do, which is decide what gets fixed.
 
-Turn each line into a numbered item answerable at a glance, following the presentation contract in the global instructions. Keep the two axes under separate `## Standards` and `## Spec` headings and do not merge or rerank across them (see _Why two axes_), but number continuously so a reply can say "3 and 7" without naming an axis.
+Turn each line into a numbered item answerable at a glance, following the presentation contract in the global instructions. Keep the three axes under separate `## 📏 Standards`, `## 🎯 Spec`, and `## ✍️ Prose` headings and do not merge or rerank across them (see _Why separate the axes_), but number continuously so a reply can say "3 and 7" without naming an axis.
+
+Each item leads with a colored dot for the recommendation, so the eye lands on what needs a decision and skims the rest. The three recommendations, each an action addressed to the user:
+
+- 🔴 **Fix** — change it.
+- ⚪ **Keep** — leave it as-is; a finding you disagree with.
+- 🟡 **Weigh** — a genuine coin flip you hand to the user; state both sides.
 
 Each item is exactly this shape:
 
 ```
-N. **<the claim in one line>** — `lib/my_app/tracking.ex:42`
-   → Fix | Decline | Your call — <one-line reason>
+🔴 N. **<the claim in one line>** — `lib/my_app/tracking.ex:42`
+   → Fix — <one-line reason>
    <two lines of evidence at most: the hunk, or the spec line it misses>
 ```
 
 The contract covers the numbering, the recommendation, and silence-as-agreement. Three things it does not cover, specific to a review:
 
-- **`Your call` is not the default.** The contract warns against manufacturing a recommendation you do not believe; the opposite failure is reaching for `Your call` on everything, which hands the review back rather than doing it. Use it where the choice is a genuine coin flip and nowhere else.
-- **List the findings you would decline.** A sub-agent flagging something you disagree with is information; dropping it silently hides that the axis looked at all. `Decline` with a reason is the honest form.
-- **Then act on exactly what came back.** A reply of "2 decline, 5 let's talk" means fixing the rest without re-asking.
+- **🟡 Weigh is not the default.** Reaching for it on everything hands the review back rather than doing it; use it only for a genuine coin flip. Unanswered, a Weigh defaults to Keep — silence leaves the code as-is, the reversible choice.
+- **List the findings you would ⚪ Keep.** Dropping one you disagree with silently hides that the axis looked at all; Keep with a reason is the honest form.
+- **Then act on exactly what came back.** A reply of "2 keep, 5 let's talk" means fixing the rest without re-asking.
 
-End with one line per axis: how many findings, and how many are recommended `Fix`. No cross-axis winner — that is the reranking the separation exists to prevent.
+End with one line per axis: how many findings, and how many are recommended 🔴 Fix. No cross-axis winner — that is the reranking the separation exists to prevent.
 
-## Why two axes
+## Why separate the axes
 
-A change can pass one axis and fail the other:
+A change can pass one axis and fail another:
 
 - Code that follows every standard but implements the wrong thing → **Standards pass, Spec fail.**
 - Code that does exactly what the issue asked but breaks the project's conventions → **Spec pass, Standards fail.**
+- Code that is correct and on-spec but buries its intent in verbose or ungrammatical comments → **Standards and Spec pass, Prose fail.**
 
-Reporting them separately stops one axis from masking the other.
+Reporting them separately stops one axis from masking another.
