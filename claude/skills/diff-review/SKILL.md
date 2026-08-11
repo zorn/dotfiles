@@ -84,7 +84,7 @@ You are done with this step once you have decided the axis runs or is skipped, a
 
 ### 6. Spawn the sub-agents in parallel
 
-Send a single message with three `Agent` tool calls, or four when step 5 found database signals. Use the `general-purpose` subagent for all of them.
+Send a single message with one `Agent` tool call per axis that runs — Standards and Prose always, Spec unless step 2 found no spec, Database when step 5 found database signals. Use the `general-purpose` subagent for all of them.
 
 **Standards sub-agent prompt** — include:
 
@@ -110,7 +110,7 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 
 - The full diff command and commit list.
 - The **database baseline from step 5** pasted in full — the sub-agent has no other access to it.
-- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line> | <claim in one line> | <migration|transaction|performance> | <the hunk it turns on, at most two lines>`. Apply each baseline concern where its signal appears in the diff. Every finding is a judgment call, and a documented repo standard overrides the baseline. When the baseline's migration-safety deferral applies, skip that concern and report the single line `- | migration safety enforced by tooling — skipped | migration | -`. Return nothing if you find nothing."
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <migration|transaction|performance> | <the hunk it turns on, at most two lines>`. Apply each baseline concern where its signal appears in the diff. Every finding is a judgment call, and a documented repo standard overrides the baseline. When the baseline's migration-safety deferral applies, skip that concern and report the single line `- | migration safety enforced by tooling — skipped | migration | -`. Return nothing if you find nothing."
 
 ### 7. Present the findings as a decision list
 
@@ -138,7 +138,7 @@ The contract covers the numbering, the recommendation, and silence-as-agreement.
 - **List the findings you would ⚪ Keep.** Dropping one you disagree with silently hides that the axis looked at all; Keep with a reason is the honest form.
 - **Then act on exactly what came back.** A reply of "2 keep, 5 let's talk" means fixing the rest without re-asking.
 
-End with one line per axis: how many findings, and how many are recommended 🔴 Fix. No cross-axis winner — that is the reranking the separation exists to prevent.
+End with one line per axis: how many findings, and how many are recommended 🔴 Fix. An axis that did not run gets a line here too, in place of the count — `Spec — skipped, no spec` or `Database — skipped, no database changes` — so a skip is visible without an empty heading above the fold. No cross-axis winner — that is the reranking the separation exists to prevent.
 
 ## Why separate the axes
 
