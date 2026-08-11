@@ -1,6 +1,6 @@
 ---
 name: diff-review
-description: Review the diff since a fixed point along three axes — Standards (does it follow this repo's documented standards?), Spec (does it do what the originating issue asked?), and Prose (are the comments and docs grammatical, and no longer than they need to be?). Use when the user wants changes reviewed, or asks to "review since X".
+description: Review the diff since a fixed point along four axes — Standards (does it follow this repo's documented standards?), Spec (does it do what the originating issue asked?), Prose (are the comments and docs grammatical, and no longer than they need to be?), and Database (only when the diff touches the DB — migration safety, transaction consistency, query performance). Use when the user wants changes reviewed, or asks to "review since X".
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
@@ -11,13 +11,14 @@ metadata:
   editor: Mike Zornek
 ---
 
-Three-axis review of the diff between `HEAD` and a fixed point the user supplies:
+Multi-axis review of the diff between `HEAD` and a fixed point the user supplies:
 
 - **Standards** — does the code conform to this repo's documented coding standards?
 - **Spec** — does the code faithfully implement the originating issue / PRD / spec?
 - **Prose** — are the comments and docs grammatical, and does every function doc and inline comment earn its length?
+- **Database** — only when the diff touches the DB: are migrations safe to deploy, are dependent writes transactional, and do queries scale?
 
-All three axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
+The first three always run. Database runs only when the diff shows database signals, since most changes don't touch the DB. The axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
 
 ## Process
 
@@ -73,9 +74,17 @@ The baseline has two concerns:
 
 Boundary with Standards: a murky function *name* is Standards (Mysterious Name); a verbose *sentence* in its doc is Prose.
 
-### 5. Spawn all three sub-agents in parallel
+### 5. Decide whether the Database axis runs
 
-Send a single message with three `Agent` tool calls. Use the `general-purpose` subagent for all three.
+Scan the diff for **database signals** — migration files, `schema do`, `Repo.`/query calls, raw SQL. If none appear, the Database axis is skipped; note this in the final report and move on. If any appear, the Database sub-agent runs in step 6, and its baseline comes from `reference/database-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it.
+
+The baseline is not inline here, unlike the smell and prose baselines, because it loads only on the reviews that touch the DB. Its migration-safety concern defers to project tooling: the baseline file carries the deferral rule, so the sub-agent decides it — you only gate on whether the diff touches the DB at all.
+
+You are done with this step once you have decided the axis runs or is skipped, and — if it runs — have the baseline text in hand to paste.
+
+### 6. Spawn the sub-agents in parallel
+
+Send a single message with three `Agent` tool calls, or four when step 5 found database signals. Use the `general-purpose` subagent for all of them.
 
 **Standards sub-agent prompt** — include:
 
@@ -97,11 +106,17 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 - The list of prose-standard files you found in step 4, **plus the prose baseline from step 4** pasted in full — the sub-agent has no other access to it.
 - The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line> | <claim in one line> | <grammar|length|noise> | <the comment or doc text it turns on, at most two lines>`. Cover (a) grammar, awkward phrasing, and British spelling in any comment or doc the diff touches; (b) any function doc or inline comment longer than its content justifies — challenge length aggressively, since the tooling that wrote this copy runs verbose; (c) comments that only restate the code, tagged `noise` for deletion. Leave identifiers and quoted text alone. Exempt deliberately thorough Markdown docs from the length and noise checks, but still flag their grammar. Return nothing if you find nothing."
 
-### 6. Present the findings as a decision list
+**Database sub-agent prompt** (only when step 5 found database signals) — include:
+
+- The full diff command and commit list.
+- The **database baseline from step 5** pasted in full — the sub-agent has no other access to it.
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line> | <claim in one line> | <migration|transaction|performance> | <the hunk it turns on, at most two lines>`. Apply each baseline concern where its signal appears in the diff. Every finding is a judgment call, and a documented repo standard overrides the baseline. When the baseline's migration-safety deferral applies, skip that concern and report the single line `- | migration safety enforced by tooling — skipped | migration | -`. Return nothing if you find nothing."
+
+### 7. Present the findings as a decision list
 
 The sub-agents return raw finding lines, not a report. Never pass those through and never expand them back into narrative — a wall of prose findings buries the only thing the user actually has to do, which is decide what gets fixed.
 
-Turn each line into a numbered item answerable at a glance, following the presentation contract in the global instructions. Keep the three axes under separate `## 📏 Standards`, `## 🎯 Spec`, and `## ✍️ Prose` headings and do not merge or rerank across them (see _Why separate the axes_), but number continuously so a reply can say "3 and 7" without naming an axis.
+Turn each line into a numbered item answerable at a glance, following the presentation contract in the global instructions. Keep the axes under separate `## 📏 Standards`, `## 🎯 Spec`, `## ✍️ Prose`, and — when it ran — `## 🛢️ Database` headings and do not merge or rerank across them (see _Why separate the axes_), but number continuously so a reply can say "3 and 7" without naming an axis.
 
 Each item leads with a colored dot for the recommendation, so the eye lands on what needs a decision and skims the rest. The three recommendations, each an action addressed to the user:
 
@@ -132,5 +147,6 @@ A change can pass one axis and fail another:
 - Code that follows every standard but implements the wrong thing → **Standards pass, Spec fail.**
 - Code that does exactly what the issue asked but breaks the project's conventions → **Spec pass, Standards fail.**
 - Code that is correct and on-spec but buries its intent in verbose or ungrammatical comments → **Standards and Spec pass, Prose fail.**
+- Code that is clean, on-spec, and clearly written but N+1s every request under load → **the other three pass, Database fails.**
 
 Reporting them separately stops one axis from masking another.
