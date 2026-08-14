@@ -87,4 +87,6 @@ The work is done when every review thread has a reply, checks are green, and the
 
 Report which comments you applied and which you declined. A summary listing only the fixes hides the judgment calls, and those are the ones worth the user's attention.
 
+Then remind the user they may want to run `/code-review`. Its focus is correctness bugs and cleanups, which `diff-review`'s standards-and-spec pass does not hunt for — so it is worth a look even though step 4 already reviewed the diff. Leave it as a line in the report, not a step to run yourself; the user triggers it when they are ready.
+
 Merging is the user's call. Do not merge.
