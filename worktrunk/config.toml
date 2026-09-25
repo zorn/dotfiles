@@ -1,0 +1,8 @@
+# Global worktrunk config: the user layer that runs for every repo. Per-repo
+# steps belong in each repo's committed .config/wt.toml, which worktrunk runs
+# after this file's hooks.
+
+# Background hook after `wt` creates a worktree. The script decides which
+# repos it acts on.
+[post-start]
+profile = "~/.config/worktrunk/hooks/post-start"

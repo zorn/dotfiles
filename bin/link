@@ -43,6 +43,14 @@ link_path() {
 # Global instructions every Claude Code session loads, regardless of project.
 link_path "$repo_root/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md" 'CLAUDE.md'
 
+# worktrunk's global config and the hook scripts it calls. Link the file, not
+# ~/.config/worktrunk itself: worktrunk writes approvals.toml there, and that
+# is machine state, not config to track.
+link_path "$repo_root/worktrunk/config.toml" \
+  "$HOME/.config/worktrunk/config.toml" 'worktrunk/config.toml'
+link_path "$repo_root/worktrunk/hooks" \
+  "$HOME/.config/worktrunk/hooks" 'worktrunk/hooks'
+
 for src in "$repo_root/claude/skills"/*/; do
   [ -d "$src" ] || continue
   name="$(basename "$src")"

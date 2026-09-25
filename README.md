@@ -20,6 +20,16 @@ Frontmatter is read strictly, so a `description` containing a colon or a `#` has
 
 The instructions every Claude Code session loads no matter which project it's in — how I want commits and pull requests written, and how I want Markdown formatted. Project-level `CLAUDE.md` files (including this repo's) layer on top of it.
 
+### worktrunk config — `worktrunk/`
+
+The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. Its `post-start` hook readies each new worktree by project type: it runs the Elixir profile when the worktree has a `mix.exs`, and does nothing in any other repo. Per-repo steps live in each repo's own `.config/wt.toml`.
+
+```bash
+brew install worktrunk
+```
+
+Run `bin/link` before worktrunk writes a config of its own, for example with `wt config create`. `bin/link` never overwrites a real file. If `~/.config/worktrunk/config.toml` already exists, it prints `SKIP` and the tracked config never loads.
+
 ## Setup
 
 ```bash
@@ -27,7 +37,7 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It links the worktrunk config into `~/.config/worktrunk/` the same way. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
 
 ## Secrets
 
@@ -44,4 +54,4 @@ brew install gitleaks actionlint shellcheck
 ./bin/check
 ```
 
-`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.
+`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, the skills, and `worktrunk/hooks/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.
