@@ -22,7 +22,7 @@ The instructions every Claude Code session loads no matter which project it's in
 
 ### worktrunk config — `worktrunk/`
 
-The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. Its `pre-start` hook readies each new worktree by project type. When the worktree has a `mix.exs`, it copies the build state and writes the worktree's port to `.env.worktree`; in any other repo it does nothing. A Phoenix app that wants its own databases opts in from its `.config/wt.toml` by calling `worktrunk/hooks/postgres`, which explains how in its header. The app's `config/runtime.exs` reads `.env.worktree`, for the reasons in [ADR 0004](docs/adr/0004-worktree-values-in-an-env-file.md).
+The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. Its `pre-start` hook readies each new worktree by project type. When the worktree has a `mix.exs`, the hook copies the build state and writes the worktree's port to `.env.worktree`. In any other repo it does nothing. A Phoenix app that wants its own databases opts in from its `.config/wt.toml` by calling `worktrunk/hooks/postgres`. The header of that script shows the lines to add. The app's `config/runtime.exs` reads `.env.worktree`, for the reasons in [ADR 0004](docs/adr/0004-worktree-values-in-an-env-file.md).
 
 ```bash
 brew install worktrunk

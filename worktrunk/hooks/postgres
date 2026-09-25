@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #
 # Per-worktree Postgres databases for a Phoenix app. A repo opts in from its
-# own .config/wt.toml, because a marker file cannot tell a vanilla Postgres
-# app from one with its own database flow:
+# own .config/wt.toml. A marker file cannot tell a vanilla Postgres app from
+# one with its own database flow, so this is not automatic:
 #
 #   [pre-start]
 #   postgres = "~/.config/worktrunk/hooks/postgres names"
@@ -24,8 +24,15 @@ usage() {
 
 case "$1" in
   names)
-    # The _dev_ and _test_ infixes keep these names from ever matching the
-    # primary checkout's databases, which teardown relies on.
+    # The global pre-start hook creates .env.worktree, and this appends to it.
+    # Fail loudly if that hook has not run, rather than write half a file.
+    if [ ! -f .env.worktree ]; then
+      printf 'postgres: no .env.worktree; the global pre-start hook must run first\n' >&2
+      exit 1
+    fi
+
+    # The _dev_ and _test_ infixes mean a worktree database name never matches
+    # the primary checkout's, so dropping one can never drop the primary.
     dev_database="$(wt step eval "{{ (repo ~ '_dev_' ~ branch) | sanitize_db }}")"
     test_database="$(wt step eval "{{ (repo ~ '_test_' ~ branch) | sanitize_db }}")"
     printf 'DEV_DATABASE_NAME=%s\nTEST_DATABASE_NAME=%s\n' "$dev_database" "$test_database" >>.env.worktree
@@ -34,7 +41,7 @@ case "$1" in
     printf 'postgres: databases %s and %s\n' "$dev_database" "$test_database"
     ;;
   create)
-    # Both steps read the names from .env.worktree through config/runtime.exs.
+    # Each command reads the names from .env.worktree through config/runtime.exs.
     mix ecto.setup
     MIX_ENV="test" mix ecto.create
     MIX_ENV="test" mix ecto.migrate

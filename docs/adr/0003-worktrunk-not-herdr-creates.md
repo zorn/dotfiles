@@ -1,5 +1,7 @@
 # Worktrunk, Not Herdr, Creates
 
+> **Refined by [ADR 0004](0004-worktree-values-in-an-env-file.md)** — the common Elixir setup runs in the global config's blocking `pre-start`, not a per-repo `post-start`, and a repo's own config adds only its database step.
+
 The Elixir/Phoenix worktree tooling uses worktrunk (`wt`) to create worktrees, and Herdr — the agent/pane TUI — attaches to a worktree after the fact rather than creating it. Researching Herdr ([issue #40](https://github.com/zorn/dotfiles/issues/40)) surfaced a Herdr-native path: create the worktree in Herdr and run the Elixir init from a `worktree.created` plugin hook. Researching worktrunk ([issue #46](https://github.com/zorn/dotfiles/issues/46)) showed worktrunk already owns the plumbing that path would have us rebuild — create/list/remove/merge, copy-on-write copying of `_build`/`deps`, deterministic ports (`hash_port`), DB-safe names (`sanitize_db`), config layering, and a `remove` hook for teardown — so we let worktrunk create and Herdr observe. Settled in [issue #45](https://github.com/zorn/dotfiles/issues/45).
 
 ## Consequences & Tradeoffs

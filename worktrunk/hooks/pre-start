@@ -3,9 +3,8 @@
 # By project type, ready a worktree that `wt` just created.
 #
 # worktrunk runs this from the new worktree's root, so the paths below are
-# relative. It picks a profile from a marker file. In a repo with no profile,
-# it exits cleanly and changes nothing, so a Hugo site or an Obsidian vault is
-# left untouched.
+# relative. It picks a profile from a marker file. A repo with no profile, such
+# as a Hugo site or an Obsidian vault, is left untouched.
 
 set -euo pipefail
 
@@ -14,14 +13,13 @@ if [ ! -f mix.exs ]; then
   exit 0
 fi
 
-# Build state first, so nothing compiles cold. --require-include makes a repo
-# that has not written a .worktreeinclude copy nothing, rather than every
-# gitignored file it has.
+# Copy build state first, so nothing compiles cold. With --require-include, a
+# repo without a .worktreeinclude gets no copy. Without the flag, it would get
+# every gitignored file it has.
 wt step copy-ignored --require-include
 
-# The port is hashed from repo and branch, not branch alone, so the same branch
-# name in two repos gets two ports. It goes to a file because worktrunk cannot
-# set a variable in a shell that opens later; see docs/adr/0004.
+# Hash the port from repo and branch, not branch alone, so the same branch name
+# in two repos gets two ports. See docs/adr/0004 for why it goes to a file.
 port="$(wt step eval "{{ (repo ~ '-' ~ branch) | hash_port }}")"
 printf 'PORT=%s\n' "$port" >.env.worktree
 wt config state vars set "port=$port"
