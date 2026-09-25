@@ -28,7 +28,7 @@ The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I crea
 brew install worktrunk
 ```
 
-Run `bin/link` before worktrunk writes a config of its own, such as through `wt config create`. `bin/link` never overwrites a real file, so an existing `~/.config/worktrunk/config.toml` makes it print `SKIP`, and the tracked config never loads.
+Run `bin/link` before worktrunk writes a config of its own, for example with `wt config create`. `bin/link` never overwrites a real file. If `~/.config/worktrunk/config.toml` already exists, it prints `SKIP` and the tracked config never loads.
 
 ## Setup
 
@@ -54,4 +54,4 @@ brew install gitleaks actionlint shellcheck
 ./bin/check
 ```
 
-`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/` and `worktrunk/hooks/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.
+`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, the skills, and `worktrunk/hooks/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.

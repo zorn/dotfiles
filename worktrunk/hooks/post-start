@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
 #
-# Ready a worktree that `wt` just created, by project type.
+# By project type, ready a worktree that `wt` just created.
 #
-# worktrunk runs this from the new worktree's root. It picks a profile from a
-# marker file, and exits cleanly in any repo it has no profile for, so a Hugo
-# site or an Obsidian vault is left untouched.
+# worktrunk runs this from the new worktree's root, so the marker test below
+# is relative. It picks a profile from a marker file. In a repo with no
+# profile, it exits cleanly and changes nothing, so a Hugo site or an Obsidian
+# vault is left untouched.
 
 set -euo pipefail
 

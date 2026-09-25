@@ -19,11 +19,12 @@
 #                `run:` blocks via shellcheck, which is what actually guards
 #                the tool install scripts in ci.yml.
 #   shell      — shellcheck over every bash script in bin/, claude/skills,
-#                and worktrunk/hooks. actionlint covers the shell inside workflow
-#                `run:` blocks and nothing else covers these; a script shipped
-#                inside a skill is otherwise wholly unchecked. (Written this
-#                way round because a comment beginning with the tool's own
-#                name parses as a shellcheck directive.)
+#                and worktrunk/hooks. actionlint covers the shell inside
+#                workflow `run:` blocks and nothing else; a script shipped
+#                inside a skill or as a worktrunk hook is otherwise wholly
+#                unchecked. (Written this way round because a comment
+#                beginning with the tool's own name parses as a shellcheck
+#                directive.)
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -109,7 +110,8 @@ printf '==> shellcheck: shell scripts\n'
 # Found by shebang rather than named, so a script is covered the moment it is
 # added — and bin/check-skills, which is Python, is not. Skills ship scripts
 # too, and a skill's script is the half of a skill nothing else validates:
-# check-skills compiles its Python and says nothing about its shell.
+# check-skills compiles its Python and says nothing about its shell. Hook
+# scripts in worktrunk/hooks have no other check at all.
 shell_scripts=()
 while IFS= read -r candidate; do
   if head -n 1 "$candidate" | grep -q '^#!.*bash'; then
