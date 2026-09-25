@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Tear down what pre-start and the postgres hook set up, before `wt` removes a
+# worktree. worktrunk runs this from the worktree's root. Files inside the
+# worktree, such as the copied build state, go with the worktree itself.
+
+set -euo pipefail
+
+# Stored database names mean the repo opted into per-worktree databases.
+# Without them there is nothing to drop, as in a repo that never opted in.
+if [ -n "$(wt config state vars get dev-database)" ]; then
+  ~/.config/worktrunk/hooks/postgres drop
+fi
+
+wt config state vars clear port
