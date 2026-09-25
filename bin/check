@@ -18,8 +18,8 @@
 #                job means after the mistake is already on main. It also lints
 #                `run:` blocks via shellcheck, which is what actually guards
 #                the tool install scripts in ci.yml.
-#   shell      — shellcheck over every bash script in bin/ and in
-#                claude/skills. actionlint covers the shell inside workflow
+#   shell      — shellcheck over every bash script in bin/, claude/skills,
+#                and worktrunk/hooks. actionlint covers the shell inside workflow
 #                `run:` blocks and nothing else covers these; a script shipped
 #                inside a skill is otherwise wholly unchecked. (Written this
 #                way round because a comment beginning with the tool's own
@@ -115,7 +115,7 @@ while IFS= read -r candidate; do
   if head -n 1 "$candidate" | grep -q '^#!.*bash'; then
     shell_scripts+=("$candidate")
   fi
-done < <(find bin claude/skills -type f -not -name '*.py' -not -name '*.md' | sort)
+done < <(find bin claude/skills worktrunk/hooks -type f -not -name '*.py' -not -name '*.md' | sort)
 if [ "${#shell_scripts[@]}" -gt 0 ]; then
   if shellcheck "${shell_scripts[@]}"; then
     printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"

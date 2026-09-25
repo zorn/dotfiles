@@ -4,11 +4,12 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 ## The symlink model
 
-`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`.
+`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It also links `worktrunk/config.toml` and `worktrunk/hooks/` into `~/.config/worktrunk/`.
 
 - **Edits are live.** A file here is the same inode the agent loads — never "reinstall" after editing, just edit.
 - **Adding a skill means re-running `bin/link`.** Adding a file inside an already-linked skill does not.
 - It prints `SKIP` rather than clobbering a real file at the destination. Add a category by calling `link_path` again, not by writing a second installer.
+- **Link worktrunk's config file, never its directory.** worktrunk writes `approvals.toml` beside the config, and a linked directory would land that machine state in this repo.
 - **`claude/CLAUDE.md` is the global file, not instructions for this repo.** A session working in `claude/` loads it a second time as directory-scoped context — harmless, since it is already loaded globally, but do not "fix" it by writing repo guidance into it. Repo guidance goes in the root `AGENTS.md`.
 
 ## CI

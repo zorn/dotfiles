@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Ready a worktree that `wt` just created, by project type.
+#
+# worktrunk runs this from the new worktree's root. It picks a profile from a
+# marker file, and exits cleanly in any repo it has no profile for, so a Hugo
+# site or an Obsidian vault is left untouched.
+
+set -euo pipefail
+
+if [ -f mix.exs ]; then
+  printf 'post-start: mix.exs found in %s; would run the Elixir profile\n' "$PWD"
+else
+  printf 'post-start: no profile for %s; nothing to do\n' "$PWD"
+fi
