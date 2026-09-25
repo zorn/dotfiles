@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# By project type, ready a worktree that `wt` just created.
+#
+# worktrunk runs this from the new worktree's root, so the paths below are
+# relative. It picks a profile from a marker file. In a repo with no profile,
+# it exits cleanly and changes nothing, so a Hugo site or an Obsidian vault is
+# left untouched.
+
+set -euo pipefail
+
+if [ ! -f mix.exs ]; then
+  printf 'pre-start: no profile for %s; nothing to do\n' "$PWD"
+  exit 0
+fi
+
+# Build state first, so nothing compiles cold. --require-include makes a repo
+# that has not written a .worktreeinclude copy nothing, rather than every
+# gitignored file it has.
+wt step copy-ignored --require-include
+
+# The port is hashed from repo and branch, not branch alone, so the same branch
+# name in two repos gets two ports. It goes to a file because worktrunk cannot
+# set a variable in a shell that opens later; see docs/adr/0004.
+port="$(wt step eval "{{ (repo ~ '-' ~ branch) | hash_port }}")"
+printf 'PORT=%s\n' "$port" >.env.worktree
+wt config state vars set "port=$port"
+
+printf 'pre-start: Elixir profile ready in %s (port %s)\n' "$PWD" "$port"

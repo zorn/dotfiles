@@ -2,7 +2,7 @@
 # steps belong in each repo's committed .config/wt.toml, which worktrunk runs
 # after this file's hooks.
 
-# Background hook after `wt` creates a worktree. The script decides which
-# repos it acts on.
-[post-start]
-profile = "~/.config/worktrunk/hooks/post-start"
+# Blocking, so a repo's own pre-start hook can rely on what this one writes.
+# worktrunk starts user and project post-start hooks together, with no order.
+[pre-start]
+profile = "~/.config/worktrunk/hooks/pre-start"
