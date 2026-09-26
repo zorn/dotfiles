@@ -7,6 +7,28 @@
 
 set -euo pipefail
 
+# Close the worktree's Herdr workspace first. Its panes would otherwise point
+# at a deleted directory, and a server running in one would hold a database
+# connection that stops the drop. Closing drops only Herdr's state.
+#
+# The status is captured before it is matched. Piped straight into `grep -q`,
+# herdr can be cut off mid-write, and pipefail then reads a running server as
+# down.
+herdr_status="$(herdr status 2>/dev/null || true)"
+if [[ "$herdr_status" == *"status: running"* ]]; then
+  if ! command -v jq >/dev/null; then
+    printf 'pre-remove: jq is not installed, so the Herdr workspace stays open\n' >&2
+  else
+    herdr workspace list |
+      jq -r --arg path "$(pwd -P)" \
+        '.result.workspaces[] | select(.worktree.checkout_path == $path) | .workspace_id' |
+      while read -r workspace; do
+        herdr workspace close "$workspace" >/dev/null
+        printf 'pre-remove: closed Herdr workspace %s\n' "$workspace"
+      done
+  fi
+fi
+
 ~/.config/worktrunk/hooks/postgres drop
 
 # The port is stored per branch, and a detached HEAD has no branch to clear.
