@@ -10,3 +10,8 @@ profile = "~/.config/worktrunk/hooks/pre-start"
 # Blocking: a failed drop stops the removal, so no database is left behind.
 [pre-remove]
 teardown = "~/.config/worktrunk/hooks/pre-remove"
+
+# --no-cd keeps the console out of the new worktree; worktrunk/README.md says
+# why. --execute runs herdr from inside the new worktree, so `.` is its path.
+[aliases]
+herdr = "wt switch --create {{ args }} --no-cd --execute herdr -- worktree open --cwd {{ primary_worktree_path }} --path . --focus"

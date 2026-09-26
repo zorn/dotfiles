@@ -22,13 +22,7 @@ The instructions every Claude Code session loads no matter which project it's in
 
 ### worktrunk config — `worktrunk/`
 
-The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. Its `pre-start` hook readies each new worktree by project type. When the worktree has a `mix.exs`, the hook copies the build state and writes the worktree's port to `.env.worktree`. In any other repo it does nothing. A Phoenix app that wants its own databases opts in from its `.config/wt.toml` by calling `worktrunk/hooks/postgres`. The header of that script shows the lines to add. Removing a worktree with `wt remove` drops its databases, and a server or IEx session still connected to one stops the removal until it is closed. The app's `config/runtime.exs` reads `.env.worktree`, for the reasons in [ADR 0004](docs/adr/0004-worktree-values-in-an-env-file.md).
-
-```bash
-brew install worktrunk
-```
-
-Run `bin/link` before worktrunk writes a config of its own, for example with `wt config create`. `bin/link` never overwrites a real file. If `~/.config/worktrunk/config.toml` already exists, it prints `SKIP` and the tracked config never loads.
+The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. It lets parallel coding agents each run a Phoenix app with its own port and databases. Its hooks ready each new worktree and tear it down again, and a `wt herdr` alias opens a new worktree in [Herdr](https://herdr.dev). [`worktrunk/README.md`](worktrunk/README.md) is the runbook: setting up a machine, the create, work, and remove flow, and how to opt a Phoenix app in.
 
 ## Setup
 

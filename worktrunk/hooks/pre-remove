@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 #
-# Tear down what pre-start and the postgres hook set up, before `wt` removes a
-# worktree. worktrunk runs this from the worktree's root, where mix and the
-# stored database names both resolve. Files inside the worktree, such as the
-# copied build state, go with the worktree itself.
+# Tear down a worktree before `wt` removes it: close its Herdr workspace, drop
+# its databases, and clear its stored port. worktrunk runs this from the
+# worktree's root, where mix and the stored database names both resolve. Files
+# inside the worktree, such as the copied build state, go with the worktree.
 
 set -euo pipefail
 
+# Close first, so a server left running in a Herdr pane lets go of its
+# database before the drop.
+~/.config/worktrunk/hooks/herdr close
 ~/.config/worktrunk/hooks/postgres drop
 
 # The port is stored per branch, and a detached HEAD has no branch to clear.
