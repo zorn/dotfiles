@@ -30,6 +30,35 @@ usage() {
 dev_name() { wt step eval "{{ (repo ~ '_dev_' ~ branch) | sanitize_db }}"; }
 test_name() { wt step eval "{{ (repo ~ '_test_' ~ branch) | sanitize_db }}"; }
 
+# The names this worktree was created with. .env.worktree keeps them whichever
+# branch is checked out, unlike the stored names, which are kept per branch.
+recorded_name() {
+  [ -f .env.worktree ] || return 0
+  sed -n "s/^$1=//p" .env.worktree | head -n 1
+}
+
+# The branch whose stored database name is the given value, if any. git config
+# exits 1 when no key matches, which is an answer here, not an error.
+branch_storing() {
+  { git config --get-regexp '^worktrunk\.state\..*\.vars\.dev-database$' || true; } |
+    awk -v name="$1" '$2 == name {
+      sub(/^worktrunk\.state\./, "", $1)
+      sub(/\.vars\.dev-database$/, "", $1)
+      print $1
+      exit
+    }'
+}
+
+# The backticks in these messages are literal, marking each command to run.
+# shellcheck disable=SC2016
+print_manual_drop() {
+  local target="$1" dev_database="$2" test_database="$3"
+  printf 'To remove the worktree anyway, run `wt remove --no-hooks %s`. Then\n' "$target"
+  printf 'drop its databases from the primary checkout:\n\n'
+  printf '  `DEV_DATABASE_NAME=%s mix ecto.drop`\n' "$dev_database"
+  printf '  `MIX_ENV=test TEST_DATABASE_NAME=%s mix ecto.drop`\n\n' "$test_database"
+}
+
 case "$1" in
   names)
     # The global pre-start hook creates .env.worktree, and this appends to it.
@@ -53,10 +82,37 @@ case "$1" in
     MIX_ENV="test" mix ecto.migrate
     ;;
   drop)
-    dev_database="$(wt config state vars get dev-database)"
-    test_database="$(wt config state vars get test-database)"
+    # Stored names are kept per branch, and a detached HEAD has no branch.
+    dev_database=""
+    test_database=""
+    if git symbolic-ref -q HEAD >/dev/null; then
+      dev_database="$(wt config state vars get dev-database)"
+      test_database="$(wt config state vars get test-database)"
+    fi
+
     if [ -z "$dev_database$test_database" ]; then
-      exit 0
+      recorded_dev="$(recorded_name DEV_DATABASE_NAME)"
+      recorded_test="$(recorded_name TEST_DATABASE_NAME)"
+      if [ -z "$recorded_dev$recorded_test" ]; then
+        exit 0
+      fi
+
+      # The worktree has databases but is not on the branch that stored their
+      # names. Stop rather than drop them down a second, less guarded path.
+      stored_branch="$(branch_storing "$recorded_dev")"
+      # shellcheck disable=SC2016
+      {
+        if [ -n "$stored_branch" ]; then
+          printf '\npostgres: the databases for this worktree are stored under branch %s,\n' "$stored_branch"
+          printf 'but it is not on that branch now. In the worktree, run `git switch %s`.\n' "$stored_branch"
+          printf 'Then run `wt remove %s` again.\n\n' "$stored_branch"
+        else
+          printf '\npostgres: this worktree lists databases in .env.worktree, but no branch\n'
+          printf 'stores their names, so they cannot be dropped safely here.\n\n'
+        fi
+        print_manual_drop "$PWD" "$recorded_dev" "$recorded_test"
+      } >&2
+      exit 1
     fi
 
     # Drop only the exact names `names` computes for this repo and branch. A
@@ -74,16 +130,12 @@ case "$1" in
     if ! DEV_DATABASE_NAME="$dev_database" mix ecto.drop ||
       ! MIX_ENV="test" TEST_DATABASE_NAME="$test_database" mix ecto.drop; then
       branch="$(wt step eval '{{ branch }}')"
-      # The backticks are literal, marking each command in the message.
       # shellcheck disable=SC2016
       {
         printf '\npostgres: could not drop the databases for this worktree. Either a server\n'
         printf 'or IEx session in it is still connected, or its code does not compile.\n'
         printf 'Close the session or fix the code, then run `wt remove %s` again.\n\n' "$branch"
-        printf 'To remove the worktree anyway, run `wt remove --no-hooks %s`. Then\n' "$branch"
-        printf 'drop its databases from the primary checkout:\n\n'
-        printf '  `DEV_DATABASE_NAME=%s mix ecto.drop`\n' "$dev_database"
-        printf '  `MIX_ENV=test TEST_DATABASE_NAME=%s mix ecto.drop`\n\n' "$test_database"
+        print_manual_drop "$branch" "$dev_database" "$test_database"
       } >&2
       exit 1
     fi
