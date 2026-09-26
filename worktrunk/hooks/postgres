@@ -13,9 +13,8 @@
 # `names` must run in pre-start. Until the names are in .env.worktree, a mix
 # run in the worktree falls back to the primary database and migrates it.
 #
-# `drop` needs no opt-in. The global pre-remove hook calls it whenever `names`
-# stored database names for the worktree, so a repo that creates databases
-# always drops them too.
+# `drop` needs no opt-in. The global pre-remove hook calls it for every
+# worktree, and it does nothing unless `names` ran.
 
 set -euo pipefail
 
@@ -26,6 +25,11 @@ usage() {
 
 [ "$#" -eq 1 ] || usage
 
+# The _dev_ and _test_ infixes mean a worktree database name never matches
+# the primary checkout's, so dropping one can never drop the primary.
+dev_name() { wt step eval "{{ (repo ~ '_dev_' ~ branch) | sanitize_db }}"; }
+test_name() { wt step eval "{{ (repo ~ '_test_' ~ branch) | sanitize_db }}"; }
+
 case "$1" in
   names)
     # The global pre-start hook creates .env.worktree, and this appends to it.
@@ -35,10 +39,8 @@ case "$1" in
       exit 1
     fi
 
-    # The _dev_ and _test_ infixes mean a worktree database name never matches
-    # the primary checkout's, so dropping one can never drop the primary.
-    dev_database="$(wt step eval "{{ (repo ~ '_dev_' ~ branch) | sanitize_db }}")"
-    test_database="$(wt step eval "{{ (repo ~ '_test_' ~ branch) | sanitize_db }}")"
+    dev_database="$(dev_name)"
+    test_database="$(test_name)"
     printf 'DEV_DATABASE_NAME=%s\nTEST_DATABASE_NAME=%s\n' "$dev_database" "$test_database" >>.env.worktree
     wt config state vars set "dev-database=$dev_database"
     wt config state vars set "test-database=$test_database"
@@ -53,30 +55,27 @@ case "$1" in
   drop)
     dev_database="$(wt config state vars get dev-database)"
     test_database="$(wt config state vars get test-database)"
+    if [ -z "$dev_database$test_database" ]; then
+      exit 0
+    fi
 
-    # Refuse any name without this repo's _dev_ or _test_ infix. A stored var
-    # edited by hand can then never point the drop at the primary database.
-    # This mirrors how sanitize_db lowercases and collapses the repo name.
-    repo="$(wt step eval '{{ repo }}')"
-    repo="$(printf '%s' "$repo" | tr '[:upper:]' '[:lower:]' | tr -cs 'a-z0-9' '_')"
-    for pair in "dev:$dev_database" "test:$test_database"; do
-      kind="${pair%%:*}"
-      name="${pair#*:}"
-      case "$name" in
-        "${repo}_${kind}_"?*) ;;
-        *)
-          printf 'postgres: refusing to drop %s; it does not start with %s_%s_\n' \
-            "${name:-an empty name}" "$repo" "$kind" >&2
-          exit 1
-          ;;
-      esac
-    done
+    # Drop only the exact names `names` computes for this repo and branch. A
+    # stored database name edited by hand then can never reach the primary.
+    expected_dev="$(dev_name)"
+    expected_test="$(test_name)"
+    if [ "$dev_database" != "$expected_dev" ] || [ "$test_database" != "$expected_test" ]; then
+      printf 'postgres: refusing to drop "%s" and "%s"; expected %s and %s\n' \
+        "$dev_database" "$test_database" "$expected_dev" "$expected_test" >&2
+      exit 1
+    fi
 
-    # A shell variable wins over .env.worktree in the app's runtime.exs, so the
-    # drop uses the app's own connection settings. An open connection makes
-    # ecto.drop fail, which stops the removal.
-    DEV_DATABASE_NAME="$dev_database" mix ecto.drop
-    MIX_ENV="test" TEST_DATABASE_NAME="$test_database" mix ecto.drop
+    # The app's runtime.exs prefers a shell variable over .env.worktree. So the
+    # drop uses the app's own connection settings.
+    if ! DEV_DATABASE_NAME="$dev_database" mix ecto.drop ||
+      ! MIX_ENV="test" TEST_DATABASE_NAME="$test_database" mix ecto.drop; then
+      printf 'postgres: drop failed. If a server or IEx session in this worktree is still running, stop it and run wt remove again.\n' >&2
+      exit 1
+    fi
 
     wt config state vars clear dev-database
     wt config state vars clear test-database

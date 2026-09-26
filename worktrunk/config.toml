@@ -7,7 +7,6 @@
 [pre-start]
 profile = "~/.config/worktrunk/hooks/pre-start"
 
-# Blocking, so a failed database drop stops the removal rather than leave the
-# databases behind with nothing pointing at them.
+# Blocking: a failed drop stops the removal, so no database is left behind.
 [pre-remove]
-profile = "~/.config/worktrunk/hooks/pre-remove"
+teardown = "~/.config/worktrunk/hooks/pre-remove"
