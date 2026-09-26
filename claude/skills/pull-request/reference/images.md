@@ -2,25 +2,25 @@
 
 Disclosed reference for [`pull-request`](../SKILL.md). Findings and test evidence: `docs/research/agent-images-in-github.md` in this repo.
 
-## What `upload-image.sh` does
+## What `--attach` does
 
-It posts the file to `https://uploads.github.com/user-attachments/assets` with the token from `gh auth token` and prints the `https://github.com/user-attachments/assets/<uuid>` URL that comes back — the same URL a human gets by dragging a file into the comment box. One request, nothing committed, no branch, and it works for an issue as readily as a PR.
+`gh pr create` and `gh pr edit` upload each attached file to GitHub's user-attachments store and rewrite the matching local reference in the body to the `https://github.com/user-attachments/assets/<uuid>` URL — the same URL a human gets by dragging a file into the comment box. An attached file the body never references is appended at the end instead.
 
-Three things to know about it. **The endpoint is undocumented**, so it can change or start refusing tokens without notice — treat a non-201 as a signal to fall back rather than as a bug to work around. **It requires write access** to the repo named in `repository_id`, which is why the script takes the repo as an argument. And **an uploaded asset cannot be listed or deleted**, since GitHub exposes no endpoint for either, so upload once the body is settled rather than while drafting.
+It **requires write access** to the repo, and **an uploaded asset cannot be listed or deleted**, since GitHub exposes no endpoint for either. So attach once, with the body settled, rather than while drafting. One command takes up to 50 files. Images and GIFs are limited to 10 MB, and video to 10 MB on Free plans and 100 MB on paid ones.
 
-The URL it returns is not fetchable on its own — GitHub rewrites it at render time into a short-lived signed URL. That rewrite happens for logged-out readers too, so the image renders for anyone who can see the PR. It does mean the URL is not a hotlink you can use anywhere else.
+The URL is not fetchable on its own — GitHub rewrites it at render time into a short-lived signed URL. That rewrite happens for logged-out readers too, so the image renders for anyone who can see the PR. It does mean the URL is not a hotlink you can use anywhere else.
 
 ## The two forms that silently fail
 
-**`<picture>` breaks with attachment URLs.** GitHub's rewriter skips the element, leaving the raw `github.com/user-attachments/...` URL in place, which 404s. Theme-aware light/dark screenshots therefore need the fallback below, whose `raw.githubusercontent.com` URLs pass through `<picture>` untouched.
+**`<picture>` breaks with attachment URLs.** GitHub's rewriter skips the element, leaving the raw `github.com/user-attachments/...` URL in place, which 404s. Theme-aware light/dark screenshots therefore need the orphan branch below, whose `raw.githubusercontent.com` URLs pass through `<picture>` untouched.
 
 **`data:` URIs are stripped.** The sanitizer removes the `src` attribute outright, leaving an image element with no source — a broken image rather than alt text. There is no inlining an image into a body.
 
 Two more limits worth carrying. GitHub sets `max-width: 100%` on every image and strips any `style` you supply, so plain `![](url)` already fills the container and `width`/`height` on a raw `<img>` are the only way to make one *smaller* — reach for them when a thumbnail is genuinely wanted, not by default. And a body with more than about ten embedded images is one the reviewer scrolls past rather than reads; list the rest by filename.
 
-## The fallback: an orphan branch
+## Theme-aware screenshots: an orphan branch
 
-Every API involved here is documented, and none of it touches the working checkout — no clone, no staging, no branch switch. Create a blob, a tree with no `base_tree`, a commit with no parents, and a ref:
+This is the one case `--attach` cannot serve: a `<picture>` pair of light and dark screenshots. Every API involved here is documented, and none of it touches the working checkout — no clone, no staging, no branch switch. Create a blob, a tree with no `base_tree`, a commit with no parents, and a ref:
 
 ```
 gh api repos/<owner>/<repo>/git/blobs -f content="$(base64 < shot.png | tr -d '\n')" -f encoding=base64 --jq .sha

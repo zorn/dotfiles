@@ -41,13 +41,7 @@ For a behavior change, give the reviewer both a way to see it and a picture of i
 
 **The demo path** costs nothing and goes stale slower than an image. Take the port from the project's config and the route from the router's own generated list (`mix phx.routes` in a Phoenix app) rather than reading the router by eye, then say what to click. Where the repo already documents how to inspect a running app, link that document rather than restating it.
 
-**The screenshot is the part reviewers actually look at, so a visible change gets one.** Capture the new state with browser automation against the running app, then upload it:
-
-```
-~/.claude/skills/pull-request/scripts/upload-image.sh <path-to-png> <owner>/<repo>
-```
-
-It prints a URL to drop straight into the body. [reference/images.md](reference/images.md) covers how it works, the two forms that silently fail, and what to do when the upload does.
+**The screenshot is the part reviewers actually look at, so a visible change gets one.** Capture the new state with browser automation against the running app, and reference it in the body by its absolute path. `gh` resolves a relative path from the directory it runs in, not the body file's, so a relative reference breaks as soon as the two differ. Step 4 uploads it with `gh --attach`, which rewrites the reference in place and keeps its position and alt text. The flag needs `gh` 2.99.0 or later, so check `gh --version` before capturing anything. [reference/images.md](reference/images.md) covers what the upload does, the two forms that silently fail, and the theme-aware light/dark pair that `--attach` cannot serve.
 
 Include a **before** shot whenever it is cheap — the base ref is already built, or the change is confined to markup and styles. When capturing it would mean a cold rebuild of the base ref, describe the old state in a sentence and show the new one alone. Seed both captures from the same fixtures, so the difference in the image is the change and nothing else. If the app renders differently across clients, say which one you captured.
 
@@ -56,12 +50,14 @@ Stack the pair vertically rather than side by side — two half-width images mak
 ```markdown
 **Before**
 
-![Settings panel, before](<url-1>)
+![Settings panel, before](<scratch>/before.png)
 
 **After**
 
-![Settings panel, after](<url-2>)
+![Settings panel, after](<scratch>/after.png)
 ```
+
+**A screen recording** earns its place when the change is an interaction rather than a state — a drag, a transition, a multi-step flow. Save it as mp4, mov, or webm and put the bare reference on a paragraph of its own, `![](<scratch>/demo.mp4)`, which GitHub renders as an inline player. Video takes no alt text, so say what it shows in the sentence above it. Size limits are in [reference/images.md](reference/images.md).
 
 **A runtime transcript** earns its place when the change's value is a return shape or an edge case that reads better as a session than as a test name. Compose it from `mix run -e` output against seeded fixtures. Piping into `iex -S mix` prints the prompt and the result with the input missing — `iex(1)> 2` for an input of `1 + 1` — so the transcript it produces misrepresents what was typed.
 
@@ -73,12 +69,15 @@ Mechanical checks, no judgment in any of them:
 - **The commit subject too, where the repo squashes from the commit.** `gh api repos/<owner>/<repo> --jq .squash_merge_commit_title` returns `COMMIT_OR_PR_TITLE` in some repos, and there a single-commit PR lands on `main` under the *commit* subject while the lint only ever read the title.
 - **Issue link present** — `Closes #<n>` on the first line when merging resolves the issue, `Refs #<n>` when it does not. Repeat the keyword per issue (`Closes #10, closes #12`); one keyword does not distribute across a comma list. Closing keywords fire only when the PR targets the default branch.
 - **Paragraphs are single unwrapped lines.**
+- **Every local image or video path in the body is absolute and gets an `--attach` for the same file.** An unmatched reference ships as a broken image, and `gh` still exits 0.
 
-Open it with a body file rather than an inline `--body`, which loses backticks in fish, silently:
+Open it with a body file rather than an inline `--body`, which loses backticks in fish, silently. Add one `--attach` per referenced file; rewriting an existing PR's body takes the same flags on `gh pr edit <n>`:
 
 ```
-gh pr create --title "<title>" --body-file <path>
+gh pr create --title "<title>" --body-file <path> --attach <scratch>/before.png --attach <scratch>/after.png
 ```
+
+A failed attachment still creates the PR and prints its URL, but `gh` exits non-zero. Recover with `gh pr edit <n> --body-file <path>` and every `--attach` again, since the original body file still holds the local paths.
 
 Then confirm the link took: `gh pr view --json closingIssuesReferences` comes back non-empty whenever you used a closing keyword.
 
