@@ -36,7 +36,7 @@ Outside Herdr, use `wt switch --create <branch>`, which changes your shell into 
 wt remove <branch>
 ```
 
-The hook closes the worktree's Herdr workspace, which also stops anything still running in it. It then drops the worktree's dev and test databases and clears its stored database names and port. `wt` removes the worktree last, and deletes the branch when it is merged. `wt merge` runs the same teardown, because it removes the worktree too.
+The hook closes the worktree's Herdr workspace, which also stops anything still running in it. It then drops the worktree's dev and test databases and clears its stored database names and port. `wt` removes the worktree last, and deletes the branch when it is merged. `wt merge` runs the same teardown, because it removes the worktree too. Run from a console in the worktree's own workspace, either command leaves that workspace open, because closing it would stop `wt` mid-removal. Close it yourself afterward.
 
 ## When removal stops
 

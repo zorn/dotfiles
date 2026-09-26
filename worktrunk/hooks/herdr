@@ -40,6 +40,13 @@ if ! workspaces="$(herdr workspace list 2>/dev/null |
 fi
 
 for workspace in $workspaces; do
+  # Never close the workspace running this removal. Closing it would stop `wt`
+  # itself, such as a `wt merge` run from the worktree's own console, before
+  # the drop.
+  if [ "$workspace" = "${HERDR_WORKSPACE_ID:-}" ]; then
+    printf 'herdr: workspace %s runs this removal, so close it yourself afterward\n' "$workspace"
+    continue
+  fi
   if herdr workspace close "$workspace" >/dev/null 2>&1; then
     printf 'herdr: closed workspace %s\n' "$workspace"
   else
