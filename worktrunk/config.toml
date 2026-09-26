@@ -6,3 +6,7 @@
 # worktrunk starts user and project post-start hooks together, with no order.
 [pre-start]
 profile = "~/.config/worktrunk/hooks/pre-start"
+
+# Blocking: a failed drop stops the removal, so no database is left behind.
+[pre-remove]
+teardown = "~/.config/worktrunk/hooks/pre-remove"

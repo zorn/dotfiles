@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# Tear down what pre-start and the postgres hook set up, before `wt` removes a
+# worktree. worktrunk runs this from the worktree's root, where mix and the
+# stored database names both resolve. Files inside the worktree, such as the
+# copied build state, go with the worktree itself.
+
+set -euo pipefail
+
+~/.config/worktrunk/hooks/postgres drop
+
+# The port is stored per branch, and a detached HEAD has no branch to clear.
+if git symbolic-ref -q HEAD >/dev/null && [ -n "$(wt config state vars get port)" ]; then
+  wt config state vars clear port
+fi
+
+printf 'pre-remove: %s is ready to remove\n' "$PWD"
