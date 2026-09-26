@@ -73,7 +73,18 @@ case "$1" in
     # drop uses the app's own connection settings.
     if ! DEV_DATABASE_NAME="$dev_database" mix ecto.drop ||
       ! MIX_ENV="test" TEST_DATABASE_NAME="$test_database" mix ecto.drop; then
-      printf 'postgres: drop failed. If a server or IEx session in this worktree is still running, stop it and run wt remove again.\n' >&2
+      branch="$(wt step eval '{{ branch }}')"
+      # The backticks are literal, marking each command in the message.
+      # shellcheck disable=SC2016
+      {
+        printf '\npostgres: could not drop the databases for this worktree. Either a server\n'
+        printf 'or IEx session in it is still connected, or its code does not compile.\n'
+        printf 'Close the session or fix the code, then run `wt remove %s` again.\n\n' "$branch"
+        printf 'To remove the worktree anyway, run `wt remove --no-hooks %s`. Then\n' "$branch"
+        printf 'drop its databases from the primary checkout:\n\n'
+        printf '  `DEV_DATABASE_NAME=%s mix ecto.drop`\n' "$dev_database"
+        printf '  `MIX_ENV=test TEST_DATABASE_NAME=%s mix ecto.drop`\n\n' "$test_database"
+      } >&2
       exit 1
     fi
 
