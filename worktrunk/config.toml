@@ -11,10 +11,7 @@ profile = "~/.config/worktrunk/hooks/pre-start"
 [pre-remove]
 teardown = "~/.config/worktrunk/hooks/pre-remove"
 
-# `wt herdr <branch>`, from a Herdr console in the repo's workspace, creates a
-# worktree and opens it in Herdr. --no-cd keeps the console out of the new
-# worktree: in Herdr 0.9.x, a repo-workspace shell inside it lets `worktree
-# open` take over the repo's workspace (herdrdev/herdr#4293). --execute runs
-# herdr from inside the new worktree, so `.` is its path.
+# --no-cd keeps the console out of the new worktree; worktrunk/README.md says
+# why. --execute runs herdr from inside the new worktree, so `.` is its path.
 [aliases]
 herdr = "wt switch --create {{ args }} --no-cd --execute herdr -- worktree open --cwd {{ primary_worktree_path }} --path . --focus"

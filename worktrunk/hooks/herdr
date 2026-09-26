@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+#
+# Herdr steps for the worktrunk hooks.
+#
+# `close` closes the Herdr workspace open on the current worktree, before `wt`
+# removes it. Otherwise its panes point at a deleted directory, and a server
+# running in one holds a database connection that stops the drop. Closing
+# deletes no files. It is best-effort: a Herdr problem prints a warning and
+# never stops the removal, which only a failed drop should do.
+
+set -uo pipefail
+
+warn() {
+  printf 'herdr: %s\n' "$1" >&2
+}
+
+if [ "$#" -ne 1 ] || [ "$1" != close ]; then
+  printf 'usage: %s close\n' "${0##*/}" >&2
+  exit 64
+fi
+
+# Capture the status before matching it. When its output is piped straight
+# into `grep -q`, herdr can be cut off mid-write, and pipefail then reads a
+# running server as down.
+status="$(herdr status 2>/dev/null)"
+if [[ "$status" != *"status: running"* ]]; then
+  exit 0
+fi
+
+if ! command -v jq >/dev/null; then
+  warn 'jq is not installed, so the workspace stays open'
+  exit 0
+fi
+
+if ! workspaces="$(herdr workspace list 2>/dev/null |
+  jq -r --arg path "$(pwd -P)" \
+    '.result.workspaces[]? | select(.worktree.checkout_path == $path) | .workspace_id')"; then
+  warn 'could not list workspaces, so the workspace stays open'
+  exit 0
+fi
+
+for workspace in $workspaces; do
+  if herdr workspace close "$workspace" >/dev/null 2>&1; then
+    printf 'herdr: closed workspace %s\n' "$workspace"
+  else
+    warn "could not close workspace $workspace; close it in Herdr"
+  fi
+done
