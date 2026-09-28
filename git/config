@@ -7,8 +7,6 @@
 [mergetool "sourcetree"]
 	cmd = /Applications/Sourcetree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
 	trustExitCode = true
-[commit]
-	template = ~/.stCommitMsg
 [init]
 	defaultBranch = main
 # Machine-only or secret settings, such as a url.*.insteadOf with a token.
