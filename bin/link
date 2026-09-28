@@ -51,6 +51,20 @@ link_path "$repo_root/worktrunk/config.toml" \
 link_path "$repo_root/worktrunk/hooks" \
   "$HOME/.config/worktrunk/hooks" 'worktrunk/hooks'
 
+# fish's config file, not ~/.config/fish itself: fish writes fish_variables
+# there, and installers drop generated functions and completions beside it.
+link_path "$repo_root/fish/config.fish" \
+  "$HOME/.config/fish/config.fish" 'fish/config.fish'
+
+# Not a symlink, but it belongs with them: without it the pre-commit secret
+# scan in githooks/ never runs. Relative, so each worktree uses its own copy.
+if [ "$(git -C "$repo_root" config core.hooksPath || true)" = githooks ]; then
+  printf '  ok       core.hooksPath\n'
+else
+  git -C "$repo_root" config core.hooksPath githooks
+  printf '  set      core.hooksPath\n'
+fi
+
 for src in "$repo_root/claude/skills"/*/; do
   [ -d "$src" ] || continue
   name="$(basename "$src")"
