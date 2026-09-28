@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 #
-# Symlink tracked config from this repo into the home directory.
+# Symlink tracked config from this repo into the home directory, and build the
+# one file that cannot be a symlink, ~/.claude/settings.json.
 #
 # Idempotent: safe to re-run after adding a new skill. Refuses to touch
 # anything that already exists as a real file or directory, so a bad run
-# can't eat config that isn't tracked here yet.
+# can't eat config that isn't tracked here yet. The built settings file is
+# rewritten only while it still matches the last build.
 
 set -euo pipefail
 
@@ -12,6 +14,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 linked=0
 skipped=0
+found_existing=false
 
 # One linker for every kind of dotfile, so adding a category is a call site
 # rather than a second copy of the "is it already ours?" logic. A real file
@@ -33,6 +36,7 @@ link_path() {
   elif [ -e "$dest" ]; then
     printf '  SKIP     %s (real file or directory already at %s)\n' "$label" "$dest"
     skipped=$((skipped + 1))
+    found_existing=true
   else
     ln -s "$src" "$dest"
     printf '  linked   %s\n' "$label"
@@ -40,45 +44,52 @@ link_path() {
   fi
 }
 
-# Claude Code's settings file is built rather than linked. Its autoMode block
-# describes private work repos, so it lives in an untracked sibling, and Claude
-# Code reads autoMode only from user or managed settings, so nothing but a merge
-# at user scope can combine the two. docs/adr/0005 has the full reasoning.
+# Claude Code's settings file is built, not linked: its private autoMode block
+# lives in an untracked sibling, and only a merge can join the two. See
+# docs/adr/0005-built-claude-settings.md.
 #
-# A live file that still matches the last build is rebuilt. One that differs is
-# left alone and diffed, like any other SKIP: the difference is a change made in
-# Claude Code's UI, and overwriting it would lose that change.
-settings_drifted=0
+# A live file that still matches the last build holds no UI change, so it is
+# rebuilt. One that differs holds a UI change, so it is diffed and skipped.
+settings_drifted=false
+settings_unbuildable=false
+
+# Every write of the live file also records it as the last build.
+write_build() {
+  local built="$1" dest="$2" last_build="$3"
+  printf '%s\n' "$built" >"$dest"
+  printf '%s\n' "$built" >"$last_build"
+}
+
 build_settings() {
   local tracked="$repo_root/claude/settings.json"
   local private="$HOME/.claude/settings.private.json"
   local dest="$HOME/.claude/settings.json"
   local label='settings.json (built)'
-  # A copy of what was last written, so a later run can tell an edit here from
-  # a change made in Claude Code's UI.
+  # The last build, to tell a source edit from a UI change.
   local last_build="$HOME/.claude/settings.last-build.json"
 
   if ! command -v jq >/dev/null 2>&1; then
     printf '  SKIP     %s (jq is not on PATH: brew install jq)\n' "$label"
     skipped=$((skipped + 1))
+    settings_unbuildable=true
     return
   fi
 
-  # jq's * merges objects recursively but replaces arrays outright, so a key the
-  # private file sets wins whole. -S sorts keys, as Claude Code does when it
-  # rewrites the file, so its reformatting alone never reads as a change.
-  local built
-  if [ -f "$private" ]; then
-    built="$(jq -S -s '.[0] * .[1]' "$tracked" "$private")"
-  else
-    built="$(jq -S . "$tracked")"
+  # jq's * merges objects deeply but replaces arrays, so a private array wins
+  # whole. -S sorts keys as Claude Code does, so its reformatting is no change.
+  local built inputs=("$tracked")
+  [ -f "$private" ] && inputs+=("$private")
+  if ! built="$(jq -S -s 'reduce .[] as $f ({}; . * $f)' "${inputs[@]}")"; then
+    printf '  SKIP     %s (not valid JSON: %s)\n' "$label" "${inputs[*]}"
+    skipped=$((skipped + 1))
+    settings_unbuildable=true
+    return
   fi
 
   mkdir -p "$(dirname "$dest")"
 
   if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
-    printf '%s\n' "$built" >"$dest"
-    printf '%s\n' "$built" >"$last_build"
+    write_build "$built" "$dest" "$last_build"
     printf '  built    %s\n' "$label"
     linked=$((linked + 1))
     return
@@ -88,13 +99,10 @@ build_settings() {
   current="$(jq -S . "$dest" 2>/dev/null)" || current=''
   previous="$(cat "$last_build" 2>/dev/null)" || previous=''
   if [ "$current" = "$built" ]; then
-    printf '%s\n' "$built" >"$last_build"
+    write_build "$built" "$dest" "$last_build"
     printf '  ok       %s\n' "$label"
   elif [ -n "$previous" ] && [ "$current" = "$previous" ]; then
-    # Nothing changed the live file since the last build, so an edit to a
-    # source is the only difference and rebuilding cannot lose anything.
-    printf '%s\n' "$built" >"$dest"
-    printf '%s\n' "$built" >"$last_build"
+    write_build "$built" "$dest" "$last_build"
     printf '  rebuilt  %s\n' "$label"
     linked=$((linked + 1))
   else
@@ -103,7 +111,7 @@ build_settings() {
       <(printf '%s\n' "$built") <(printf '%s\n' "$current") |
       sed 's/^/           /' || true
     skipped=$((skipped + 1))
-    settings_drifted=1
+    settings_drifted=true
   fi
 }
 
@@ -189,13 +197,18 @@ if [ -f "$HOME/.gitconfig" ]; then
   printf 'holds into git/config or ~/.config/git/config.local, then delete it.\n'
 fi
 
-if [ "$settings_drifted" -gt 0 ]; then
+if [ "$settings_drifted" = true ]; then
   printf '\n~/.claude/settings.json has changes the build lacks, marked + above.\n'
   printf 'Copy each into claude/settings.json, or into settings.private.json if\n'
   printf 'it is private, then delete ~/.claude/settings.json and re-run.\n'
 fi
 
-if [ "$skipped" -gt "$settings_drifted" ]; then
+if [ "$settings_unbuildable" = true ]; then
+  printf '\n~/.claude/settings.json was not built. Fix the cause named above and\n'
+  printf 're-run.\n'
+fi
+
+if [ "$found_existing" = true ]; then
   printf '\nSkipped entries already exist outside this repo. Move them in and\n'
   printf 'delete the original before re-running, or leave them as they are.\n'
 fi

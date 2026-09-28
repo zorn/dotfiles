@@ -28,6 +28,9 @@
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
+#   link       — bin/test-link, which runs bin/link against a throwaway HOME.
+#                The settings build must never overwrite a change made in
+#                Claude Code's UI, and nothing else would notice if it did.
 
 set -euo pipefail
 
@@ -60,6 +63,10 @@ require shellcheck 'brew install shellcheck' \
 # no third-party dependencies, so a stock interpreter is the whole requirement.
 require python3 'brew install python' \
   'https://www.python.org/downloads/'
+
+# bin/link builds ~/.claude/settings.json with jq, so bin/test-link needs it.
+require jq 'brew install jq' \
+  'https://jqlang.org/download/'
 
 [ "$missing" -eq 0 ] || exit 127
 
@@ -134,6 +141,10 @@ printf '==> check-skills: skill frontmatter, links and scripts\n'
 ./bin/check-skills || failed=1
 printf '\n'
 
+printf '==> test-link: settings build\n'
+./bin/test-link || failed=1
+printf '\n'
+
 if [ "$failed" -ne 0 ]; then
   printf 'FAILED. Do not push.\n\n' >&2
   printf 'A gitleaks finding in the working tree means edit the file. A finding\n' >&2
@@ -143,7 +154,9 @@ if [ "$failed" -ne 0 ]; then
   printf 'An actionlint finding means the workflow YAML is wrong — fix it here\n' >&2
   printf 'rather than discovering it on a run against main.\n\n' >&2
   printf 'A check-skills finding means a skill would not load, or would load\n' >&2
-  printf 'with a mangled description. Nothing at runtime reports either one.\n' >&2
+  printf 'with a mangled description. Nothing at runtime reports either one.\n\n' >&2
+  printf 'A test-link failure means bin/link could overwrite a change made in\n' >&2
+  printf "Claude Code's UI. Fix bin/link before running it on a real HOME.\n" >&2
   exit 1
 fi
 
