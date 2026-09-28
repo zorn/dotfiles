@@ -27,10 +27,6 @@ fish_add_path --path $HOME/.local/bin
 # Make it so we always open from Cursor classic.
 alias c 'cursor --classic'
 
-function bunx --wraps='bun x' --description 'alias bunx bun x'
-    bun x $argv
-end
-
 # Secrets and machine-only settings. This file sits outside the repo, so
 # nothing in it can be committed by accident.
 if test -f $__fish_config_dir/local.fish
