@@ -13,7 +13,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 - **Link only `fish/config.fish`, never `~/.config/fish/` or its subdirectories.** Fish writes `fish_variables` there and installers write generated functions and completions, so a linked directory would put them in the repo. Add a `link_path` for a `conf.d/` or `functions/` file only when it is hand-written.
 - **`~/.config/fish/local.fish` sits outside the repo on purpose.** It is where a shell secret goes; a gitignored file inside the repo is one `git add -f` from public.
 - **Link only `git/config` and `git/ignore`, never `~/.config/git/`.** Credential helpers write machine state there. Machine-only or secret git settings go in the untracked `~/.config/git/config.local`, which `git/config` includes.
-- **Link only `zed/settings.json`, never `~/.config/zed/`.** Zed writes its own `AGENTS.md` and the rules database there. When a custom theme arrives, link `themes/` whole — Zed only reads it.
+- **Link only `zed/settings.json`, never `~/.config/zed/`.** Zed keeps its rules database there, and its rules-to-skills migration may write an `AGENTS.md` there. When a custom theme arrives, link `themes/` whole — Zed never writes there.
 - **`claude/CLAUDE.md` is the global file, not instructions for this repo.** A session working in `claude/` loads it a second time as directory-scoped context — harmless, since it is already loaded globally, but do not "fix" it by writing repo guidance into it. Repo guidance goes in the root `AGENTS.md`.
 
 ## CI

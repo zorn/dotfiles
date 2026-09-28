@@ -36,7 +36,7 @@ Secrets and machine-only settings go in `~/.config/fish/local.fish`, which `conf
 
 ### Zed settings — `zed/`
 
-My [Zed](https://zed.dev) `settings.json`, including `auto_install_extensions`, so a fresh machine installs the extensions the language-server settings rely on. Only that file is tracked. The theme is a built-in, so the `theme` setting carries it. The rules database in `~/.config/zed/prompts/` is binary and stays out.
+My [Zed](https://zed.dev) `settings.json`. Its `auto_install_extensions` list makes a fresh machine install the extensions the language-server settings rely on. Only that file is tracked. My theme is a built-in, so `themes/` is empty and not tracked. The rules database in `~/.config/zed/prompts/` is binary and stays out.
 
 ## Setup
 
@@ -45,7 +45,7 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It links the worktrunk config into `~/.config/worktrunk/` `fish/config.fish` into `~/.config/fish/`, and `zed/settings.json` into `~/.config/zed/` the same way, and points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It links the worktrunk config into `~/.config/worktrunk/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, and `zed/settings.json` into `~/.config/zed/` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
 
 ## Secrets
 

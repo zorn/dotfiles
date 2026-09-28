@@ -62,9 +62,9 @@ link_path "$repo_root/fish/config.fish" \
 link_path "$repo_root/git/config" "$HOME/.config/git/config" 'git/config'
 link_path "$repo_root/git/ignore" "$HOME/.config/git/ignore" 'git/ignore'
 
-# Zed's settings file, not ~/.config/zed itself: Zed writes its own AGENTS.md
-# and the rules database there. Zed resolves the symlink before saving, so a
-# change made in its UI lands here rather than replacing the link.
+# Zed's settings file, not ~/.config/zed itself: Zed keeps its rules database
+# there. Zed resolves the symlink before it saves. A change made in its UI
+# lands here and leaves the link in place.
 link_path "$repo_root/zed/settings.json" \
   "$HOME/.config/zed/settings.json" 'zed/settings.json'
 
