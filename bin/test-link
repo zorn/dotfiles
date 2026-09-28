@@ -70,6 +70,15 @@ assert 'a malformed source is skipped' grep -q 'not valid JSON' "$out"
 assert 'a malformed source writes nothing' test ! -e "$settings"
 assert 'a malformed source does not stop the run' grep -q 'zed/settings.json' "$out"
 
+tracked_copy="$home/tracked.json"
+printf '%s\n' '{"theme": "auto"}' >"$tracked_copy"
+rm -f "$settings"
+ln -s "$tracked_copy" "$settings"
+printf '%s\n' '{"autoMode": {"allow": ["secret"]}}' >"$private"
+run_link
+assert 'a symlinked live file is skipped' grep -q 'symlink where a built file belongs' "$out"
+assert 'a symlink target never gets the private block' grep -qx '{"theme": "auto"}' "$tracked_copy"
+
 if [ "$failed" -ne 0 ]; then
   exit 1
 fi

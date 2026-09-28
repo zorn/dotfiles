@@ -88,7 +88,16 @@ build_settings() {
 
   mkdir -p "$(dirname "$dest")"
 
-  if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+  # A write would follow a symlink, and one pointing into this repo would carry
+  # the private block into a tracked file.
+  if [ -L "$dest" ]; then
+    printf '  SKIP     %s (symlink where a built file belongs: %s)\n' "$label" "$dest"
+    skipped=$((skipped + 1))
+    settings_unbuildable=true
+    return
+  fi
+
+  if [ ! -e "$dest" ]; then
     write_build "$built" "$dest" "$last_build"
     printf '  built    %s\n' "$label"
     linked=$((linked + 1))
