@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#
+# Run bin/link against a throwaway HOME and check how it builds
+# ~/.claude/settings.json.
+#
+# The build exists so that a change made in Claude Code's UI is never
+# overwritten. A regression there loses that change without a word, so each
+# outcome gets a case here rather than a one-time manual check.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+home="$(mktemp -d)"
+trap 'rm -rf "$home"' EXIT
+
+settings="$home/.claude/settings.json"
+private="$home/.claude/settings.private.json"
+out="$home/link-output"
+failed=0
+
+run_link() {
+  HOME="$home" "$repo_root/bin/link" >"$out" 2>&1
+}
+
+assert() {
+  local label="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    printf '  pass  %s\n' "$label"
+  else
+    printf '  FAIL  %s\n' "$label"
+    sed 's/^/        /' "$out"
+    failed=1
+  fi
+}
+
+run_link
+assert 'a fresh HOME gets a built file' grep -q '^  built    settings.json' "$out"
+assert 'the build carries tracked keys' jq -e '.statusLine.command' "$settings"
+
+run_link
+assert 'an unchanged file reports ok' grep -q '^  ok       settings.json' "$out"
+
+printf '%s\n' '{"autoMode": {"allow": ["x"]}, "permissions": {"deny": ["y"]}}' >"$private"
+run_link
+assert 'a source edit rebuilds an unchanged file' grep -q '^  rebuilt  settings.json' "$out"
+assert 'the private autoMode block is merged in' jq -e '.autoMode.allow == ["x"]' "$settings"
+assert 'a private array replaces the tracked one' jq -e '.permissions.deny == ["y"]' "$settings"
+assert 'tracked siblings of a private key survive' jq -e '.permissions.allow | length > 0' "$settings"
+
+jq '.theme = "changed-in-ui"' "$settings" >"$home/edited" && mv "$home/edited" "$settings"
+run_link
+assert 'a UI change is skipped' grep -q '^  SKIP     settings.json' "$out"
+assert 'a UI change is not overwritten' jq -e '.theme == "changed-in-ui"' "$settings"
+
+printf '%s\n' '{"autoMode": {"allow": ["z"]}}' >"$private"
+run_link
+assert 'a UI change survives a source edit' jq -e '.theme == "changed-in-ui"' "$settings"
+
+printf 'not json\n' >"$settings"
+run_link
+assert 'a corrupt live file is skipped' grep -q '^  SKIP     settings.json' "$out"
+assert 'a corrupt live file is left alone' grep -qx 'not json' "$settings"
+
+rm "$settings"
+printf '{\n' >"$private"
+run_link
+assert 'a malformed source is skipped' grep -q 'not valid JSON' "$out"
+assert 'a malformed source writes nothing' test ! -e "$settings"
+assert 'a malformed source does not stop the run' grep -q 'zed/settings.json' "$out"
+
+# The leak the build exists to prevent: a live file that is a symlink into a
+# tracked copy, matching the last build, then a private block added.
+rm -f "$settings" "$private"
+run_link
+tracked_copy="$home/tracked.json"
+cp "$settings" "$tracked_copy"
+rm "$settings"
+ln -s "$tracked_copy" "$settings"
+printf '%s\n' '{"autoMode": {"allow": ["secret"]}}' >"$private"
+run_link
+assert 'a symlinked live file is skipped' grep -q 'symlink where a built file belongs' "$out"
+assert 'a symlink target never gets the private block' jq -e '.autoMode == null' "$tracked_copy"
+
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi

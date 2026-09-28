@@ -20,6 +20,10 @@ Frontmatter is read strictly, so a `description` containing a colon or a `#` has
 
 The instructions every Claude Code session loads no matter which project it's in — how I want commits and pull requests written, and how I want Markdown formatted. Project-level `CLAUDE.md` files (including this repo's) layer on top of it.
 
+### Claude Code settings — `claude/`
+
+My Claude Code `settings.json`, `keybindings.json`, and status line script. The settings file holds an `autoMode` block that describes private work repos. That block lives in an untracked `~/.claude/settings.private.json`, and `bin/link` merges the two into the live file. [ADR 0005](docs/adr/0005-built-claude-settings.md) explains why.
+
 ### worktrunk config — `worktrunk/`
 
 The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. It lets parallel coding agents each run a Phoenix app with its own port and databases. Its hooks ready each new worktree and tear it down again, and a `wt herdr` alias opens a new worktree in [Herdr](https://herdr.dev). [`worktrunk/README.md`](worktrunk/README.md) is the runbook: setting up a machine, the create, work, and remove flow, and how to opt a Phoenix app in.
@@ -45,13 +49,13 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It links the worktrunk config into `~/.config/worktrunk/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, and `zed/settings.json` into `~/.config/zed/` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `CLAUDE.md`, `keybindings.json`, and `statusline-command.sh` to the same names. It builds `~/.claude/settings.json` instead, from `claude/settings.json` and the private file. It links the worktrunk config into `~/.config/worktrunk/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, and `zed/settings.json` into `~/.config/zed/` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a linked file takes effect immediately — no reinstall step. After editing `claude/settings.json`, re-run `bin/link`. It rebuilds the live file unless a change made in Claude Code's UI is there, which it shows as a diff instead of overwriting.
 
 ## Secrets
 
 Nothing in this repo is a credential, and nothing ever should be.
 
-Config that mixes shareable settings with a secret gets split: the shareable part lives here, the secret lives in an untracked sibling file that the tracked one loads at runtime.
+Config that mixes shareable settings with a secret gets split: the shareable part lives here, the secret lives in an untracked sibling file that the tracked one loads at runtime. Claude Code's `settings.json` cannot load another file, so `bin/link` merges it with its sibling instead.
 
 [gitleaks](https://gitleaks.io) runs on every pull request as a required check, so a leak blocks the merge. It scans the working tree *and* the commit history, because this repo is public and git history is permanent — a credential that reaches GitHub is already scraped, and deleting it in the next commit fixes nothing.
 
@@ -60,8 +64,8 @@ A pre-commit hook in `githooks/` runs gitleaks over the staged changes, so a sec
 To run every check before you push:
 
 ```bash
-brew install gitleaks actionlint shellcheck
+brew install gitleaks actionlint shellcheck jq
 ./bin/check
 ```
 
-`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, the skills, `worktrunk/hooks/`, and `githooks/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.
+`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, `claude/`, `worktrunk/hooks/`, and `githooks/`, `bin/check-skills` over the skills, and `bin/test-link`, which runs `bin/link` against a throwaway home directory — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for `bin/check-skills`, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.

@@ -4,16 +4,18 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 ## The symlink model
 
-`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It also links `worktrunk/config.toml` and `worktrunk/hooks/` into `~/.config/worktrunk/`, links `fish/config.fish` into `~/.config/fish/`, links `git/config` and `git/ignore` into `~/.config/git/`, links `zed/settings.json` into `~/.config/zed/`, and sets `core.hooksPath` to `githooks/`.
+`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md`, `claude/keybindings.json` and `claude/statusline-command.sh` to the same names in `~/.claude/`. It builds `~/.claude/settings.json` from `claude/settings.json` rather than linking it. It also links `worktrunk/config.toml` and `worktrunk/hooks/` into `~/.config/worktrunk/`, links `fish/config.fish` into `~/.config/fish/`, links `git/config` and `git/ignore` into `~/.config/git/`, links `zed/settings.json` into `~/.config/zed/`, and sets `core.hooksPath` to `githooks/`.
 
-- **Edits are live.** A file here is the same inode the agent loads — never "reinstall" after editing, just edit.
+- **Edits to a linked file are live.** It is the same inode the agent loads — never "reinstall" after editing, just edit.
 - **Adding a skill means re-running `bin/link`.** Adding a file inside an already-linked skill does not.
-- It prints `SKIP` rather than clobbering a real file at the destination. Add a category by calling `link_path` again, not by writing a second installer.
+- It prints `SKIP` rather than clobbering a real file at the destination. Add a category by calling `link_path` again, not by writing a second installer. `build_settings` is the one exception, because `settings.json` cannot be a link.
 - **Never link `~/.config/worktrunk/` itself — only the files and `hooks/` inside it.** worktrunk writes `approvals.toml` there, and a linked directory would put that machine state in this repo.
 - **Link only `fish/config.fish`, never `~/.config/fish/` or its subdirectories.** Fish writes `fish_variables` there and installers write generated functions and completions, so a linked directory would put them in the repo. Add a `link_path` for a `conf.d/` or `functions/` file only when it is hand-written.
 - **`~/.config/fish/local.fish` sits outside the repo on purpose.** It is where a shell secret goes; a gitignored file inside the repo is one `git add -f` from public.
 - **Link only `git/config` and `git/ignore`, never `~/.config/git/`.** Credential helpers write machine state there. Machine-only or secret git settings go in the untracked `~/.config/git/config.local`, which `git/config` includes.
 - **Link only `zed/settings.json`, never `~/.config/zed/`.** Zed keeps its rules database there, and its rules-to-skills migration may write an `AGENTS.md` there. When a custom theme arrives, link `themes/` whole — Zed never writes there.
+- **`~/.claude/settings.json` is built, not linked — edit `claude/settings.json`, then re-run `bin/link`.** It merges in the untracked `~/.claude/settings.private.json` ([ADR 0005](docs/adr/0005-built-claude-settings.md)).
+- **`autoMode` goes in `settings.private.json`, never `claude/settings.json`.** It describes private work repos, and gitleaks cannot flag it, since it is prose, not a credential.
 - **`claude/CLAUDE.md` is the global file, not instructions for this repo.** A session working in `claude/` loads it a second time as directory-scoped context — harmless, since it is already loaded globally, but do not "fix" it by writing repo guidance into it. Repo guidance goes in the root `AGENTS.md`.
 
 ## CI
@@ -23,7 +25,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 - **Do not rename the `gitleaks` job.** Its id is the required-status-check context on the `protect-main` ruleset, so renaming silently un-requires it. It runs more than gitleaks now.
 - The ruleset lives in repo settings, so nothing here enforces it and it can be switched off without leaving a diff. Verify rather than trust: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[].type'`.
 - Tool pins in `ci.yml` are a version plus a tarball checksum, and **Dependabot cannot see them** — no ecosystem tracks a curl'd release, and the checksum is not what hides them. Bumping is manual; move the checksum with the version, from that release's `<tool>_<version>_checksums.txt`.
-- **`shellcheck` and `python3` are unpinned on purpose** — unlike gitleaks and actionlint, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.
+- **`shellcheck`, `python3` and `jq` are unpinned on purpose** — unlike gitleaks and actionlint, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.
 
 ## Skill validation
 
@@ -46,6 +48,6 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 ## Secrets
 
-Config mixing shareable settings with a secret gets split: the shareable half lives here, the secret in an untracked sibling the tracked file loads at runtime.
+Config mixing shareable settings with a secret gets split: the shareable half lives here, the secret in an untracked sibling the tracked file loads at runtime. A file with no way to load another, like Claude Code's `settings.json`, is merged with its sibling by `bin/link` instead.
 
 Treat a history finding as a live incident. The repo is public and git history is permanent, so a credential that reached GitHub has already been scraped — fixing it means rewriting history **and** rotating the secret. A genuine false positive gets a `gitleaks:allow` comment at the line, never a `.gitleaksignore` entry.

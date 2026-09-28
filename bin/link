@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 #
-# Symlink tracked config from this repo into the home directory.
+# Symlink tracked config from this repo into the home directory, and build the
+# one file that cannot be a symlink, ~/.claude/settings.json.
 #
 # Idempotent: safe to re-run after adding a new skill. Refuses to touch
 # anything that already exists as a real file or directory, so a bad run
-# can't eat config that isn't tracked here yet.
+# can't eat config that isn't tracked here yet. The built settings file is
+# rewritten only while it still matches the last build.
 
 set -euo pipefail
 
@@ -12,6 +14,7 @@ repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 linked=0
 skipped=0
+found_existing=false
 
 # One linker for every kind of dotfile, so adding a category is a call site
 # rather than a second copy of the "is it already ours?" logic. A real file
@@ -33,6 +36,7 @@ link_path() {
   elif [ -e "$dest" ]; then
     printf '  SKIP     %s (real file or directory already at %s)\n' "$label" "$dest"
     skipped=$((skipped + 1))
+    found_existing=true
   else
     ln -s "$src" "$dest"
     printf '  linked   %s\n' "$label"
@@ -40,8 +44,93 @@ link_path() {
   fi
 }
 
+# Claude Code's settings file is built, not linked: its private autoMode block
+# lives in an untracked sibling, and only a merge can join the two. See
+# docs/adr/0005-built-claude-settings.md.
+#
+# A live file that still matches the last build holds no UI change, so it is
+# rebuilt. One that differs holds a UI change, so it is diffed and skipped.
+settings_drifted=false
+settings_unbuildable=false
+
+# Every write of the live file also records it as the last build.
+write_build() {
+  local built="$1" dest="$2" last_build="$3"
+  printf '%s\n' "$built" >"$dest"
+  printf '%s\n' "$built" >"$last_build"
+}
+
+build_settings() {
+  local tracked="$repo_root/claude/settings.json"
+  local private="$HOME/.claude/settings.private.json"
+  local dest="$HOME/.claude/settings.json"
+  local label='settings.json (built)'
+  # The last build, to tell a source edit from a UI change.
+  local last_build="$HOME/.claude/settings.last-build.json"
+
+  if ! command -v jq >/dev/null 2>&1; then
+    printf '  SKIP     %s (jq is not on PATH: brew install jq)\n' "$label"
+    skipped=$((skipped + 1))
+    settings_unbuildable=true
+    return
+  fi
+
+  # jq's * merges objects deeply but replaces arrays, so a private array wins
+  # whole. -S sorts keys as Claude Code does, so its reformatting is no change.
+  local built inputs=("$tracked")
+  [ -f "$private" ] && inputs+=("$private")
+  if ! built="$(jq -S -s 'reduce .[] as $f ({}; . * $f)' "${inputs[@]}")"; then
+    printf '  SKIP     %s (not valid JSON: %s)\n' "$label" "${inputs[*]}"
+    skipped=$((skipped + 1))
+    settings_unbuildable=true
+    return
+  fi
+
+  mkdir -p "$(dirname "$dest")"
+
+  # A write would follow a symlink, and one pointing into this repo would carry
+  # the private block into a tracked file.
+  if [ -L "$dest" ]; then
+    printf '  SKIP     %s (symlink where a built file belongs: %s)\n' "$label" "$dest"
+    skipped=$((skipped + 1))
+    settings_unbuildable=true
+    return
+  fi
+
+  if [ ! -e "$dest" ]; then
+    write_build "$built" "$dest" "$last_build"
+    printf '  built    %s\n' "$label"
+    linked=$((linked + 1))
+    return
+  fi
+
+  local current previous
+  current="$(jq -S . "$dest" 2>/dev/null)" || current=''
+  previous="$(cat "$last_build" 2>/dev/null)" || previous=''
+  if [ "$current" = "$built" ]; then
+    write_build "$built" "$dest" "$last_build"
+    printf '  ok       %s\n' "$label"
+  elif [ -n "$previous" ] && [ "$current" = "$previous" ]; then
+    write_build "$built" "$dest" "$last_build"
+    printf '  rebuilt  %s\n' "$label"
+    linked=$((linked + 1))
+  else
+    printf '  SKIP     %s (live file differs from the build)\n' "$label"
+    diff -u --label 'would build' --label "$dest" \
+      <(printf '%s\n' "$built") <(printf '%s\n' "$current") |
+      sed 's/^/           /' || true
+    skipped=$((skipped + 1))
+    settings_drifted=true
+  fi
+}
+
 # Global instructions every Claude Code session loads, regardless of project.
 link_path "$repo_root/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md" 'CLAUDE.md'
+build_settings
+link_path "$repo_root/claude/keybindings.json" \
+  "$HOME/.claude/keybindings.json" 'keybindings.json'
+link_path "$repo_root/claude/statusline-command.sh" \
+  "$HOME/.claude/statusline-command.sh" 'statusline-command.sh'
 
 # worktrunk's global config and the hook scripts it calls. Link the file, not
 # ~/.config/worktrunk itself: worktrunk writes approvals.toml there, and that
@@ -117,7 +206,18 @@ if [ -f "$HOME/.gitconfig" ]; then
   printf 'holds into git/config or ~/.config/git/config.local, then delete it.\n'
 fi
 
-if [ "$skipped" -gt 0 ]; then
+if [ "$settings_drifted" = true ]; then
+  printf '\n~/.claude/settings.json has changes the build lacks, marked + above.\n'
+  printf 'Copy each into claude/settings.json, or into settings.private.json if\n'
+  printf 'it is private, then delete ~/.claude/settings.json and re-run.\n'
+fi
+
+if [ "$settings_unbuildable" = true ]; then
+  printf '\n~/.claude/settings.json was not built. Fix the cause named above and\n'
+  printf 're-run.\n'
+fi
+
+if [ "$found_existing" = true ]; then
   printf '\nSkipped entries already exist outside this repo. Move them in and\n'
   printf 'delete the original before re-running, or leave them as they are.\n'
 fi
