@@ -24,6 +24,16 @@ The instructions every Claude Code session loads no matter which project it's in
 
 The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. It lets parallel coding agents each run a Phoenix app with its own port and databases. Its hooks ready each new worktree and tear it down again, and a `wt herdr` alias opens a new worktree in [Herdr](https://herdr.dev). [`worktrunk/README.md`](worktrunk/README.md) is the runbook: setting up a machine, the create, work, and remove flow, and how to opt a Phoenix app in.
 
+### fish config — `fish/`
+
+My [fish](https://fishshell.com) `config.fish`: PATH setup, including asdf's shims. Only that one file is tracked. Fish writes `fish_variables` into the same directory, and installers add their own generated functions and completions there. Those files are machine state, so on a fresh machine they come back from the tools that write them:
+
+- `conf.d/rustup.fish` — installing rustup
+- `completions/asdf.fish` — `asdf completion fish > ~/.config/fish/completions/asdf.fish`
+- `functions/wt.fish` and `completions/wt.fish` — `wt config shell install`
+
+Secrets and machine-only settings go in `~/.config/fish/local.fish`, which `config.fish` loads if it exists. It lives outside the repo, so it cannot be committed.
+
 ## Setup
 
 ```bash
@@ -31,7 +41,7 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It links the worktrunk config into `~/.config/worktrunk/` the same way. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It links the worktrunk config into `~/.config/worktrunk/` and `fish/config.fish` into `~/.config/fish/` the same way, and points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a file in this repo takes effect immediately — no reinstall step.
 
 ## Secrets
 
@@ -41,11 +51,13 @@ Config that mixes shareable settings with a secret gets split: the shareable par
 
 [gitleaks](https://gitleaks.io) runs on every pull request as a required check, so a leak blocks the merge. It scans the working tree *and* the commit history, because this repo is public and git history is permanent — a credential that reaches GitHub is already scraped, and deleting it in the next commit fixes nothing.
 
-To find out before you push rather than after:
+A pre-commit hook in `githooks/` runs gitleaks over the staged changes, so a secret is caught before the commit exists rather than after the push. It refuses the commit when gitleaks is not installed, because a scan that did not run must not look like a clean one.
+
+To run every check before you push:
 
 ```bash
 brew install gitleaks actionlint shellcheck
 ./bin/check
 ```
 
-`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, the skills, and `worktrunk/hooks/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.
+`bin/check` is the same script CI runs, so there's one definition of "green" instead of two that drift apart. Secret scanning is only its first job: it also runs [actionlint](https://github.com/rhysd/actionlint) over the workflow files, [shellcheck](https://www.shellcheck.net) over the scripts in `bin/`, the skills, `worktrunk/hooks/`, and `githooks/`, and `bin/check-skills` over the skills — hence the extra tools above, and why it exits rather than checking anything if one is missing. It needs `python3` on PATH for that last one, which any machine with the Xcode command line tools already has. The pull request check is the guarantee; `bin/check` is just the convenience.

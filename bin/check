@@ -19,7 +19,7 @@
 #                `run:` blocks via shellcheck, which is what actually guards
 #                the tool install scripts in ci.yml.
 #   shell      — shellcheck over every bash script in bin/, claude/skills,
-#                and worktrunk/hooks. actionlint covers the shell inside
+#                worktrunk/hooks, and githooks. actionlint covers the shell inside
 #                workflow `run:` blocks and nothing else; a script shipped
 #                inside a skill or as a worktrunk hook is otherwise wholly
 #                unchecked. (Written this way round because a comment
@@ -111,13 +111,13 @@ printf '==> shellcheck: shell scripts\n'
 # added — and bin/check-skills, which is Python, is not. Skills ship scripts
 # too, and a skill's script is the half of a skill nothing else validates:
 # check-skills compiles its Python and says nothing about its shell. Hook
-# scripts in worktrunk/hooks have no other check at all.
+# scripts in worktrunk/hooks and githooks have no other check at all.
 shell_scripts=()
 while IFS= read -r candidate; do
   if head -n 1 "$candidate" | grep -q '^#!.*bash'; then
     shell_scripts+=("$candidate")
   fi
-done < <(find bin claude/skills worktrunk/hooks -type f -not -name '*.py' -not -name '*.md' | sort)
+done < <(find bin claude/skills worktrunk/hooks githooks -type f -not -name '*.py' -not -name '*.md' | sort)
 if [ "${#shell_scripts[@]}" -gt 0 ]; then
   if shellcheck "${shell_scripts[@]}"; then
     printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"
