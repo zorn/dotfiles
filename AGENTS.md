@@ -4,7 +4,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 ## The symlink model
 
-`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md` to `~/.claude/CLAUDE.md`. It also links `worktrunk/config.toml` and `worktrunk/hooks/` into `~/.config/worktrunk/`, links `fish/config.fish` into `~/.config/fish/`, links `git/config` and `git/ignore` into `~/.config/git/`, links `zed/settings.json` into `~/.config/zed/`, and sets `core.hooksPath` to `githooks/`.
+`bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md`, `keybindings.json` and `statusline-command.sh` to the same names. It builds `~/.claude/settings.json` rather than linking it. It also links `worktrunk/config.toml` and `worktrunk/hooks/` into `~/.config/worktrunk/`, links `fish/config.fish` into `~/.config/fish/`, links `git/config` and `git/ignore` into `~/.config/git/`, links `zed/settings.json` into `~/.config/zed/`, and sets `core.hooksPath` to `githooks/`.
 
 - **Edits are live.** A file here is the same inode the agent loads — never "reinstall" after editing, just edit.
 - **Adding a skill means re-running `bin/link`.** Adding a file inside an already-linked skill does not.
@@ -14,6 +14,8 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 - **`~/.config/fish/local.fish` sits outside the repo on purpose.** It is where a shell secret goes; a gitignored file inside the repo is one `git add -f` from public.
 - **Link only `git/config` and `git/ignore`, never `~/.config/git/`.** Credential helpers write machine state there. Machine-only or secret git settings go in the untracked `~/.config/git/config.local`, which `git/config` includes.
 - **Link only `zed/settings.json`, never `~/.config/zed/`.** Zed keeps its rules database there, and its rules-to-skills migration may write an `AGENTS.md` there. When a custom theme arrives, link `themes/` whole — Zed never writes there.
+- **`~/.claude/settings.json` is built, not linked — edit `claude/settings.json`, then re-run `bin/link`.** It merges in the untracked `~/.claude/settings.private.json` ([ADR 0005](docs/adr/0005-built-claude-settings.md)). A change made in Claude Code's UI lands only in the live file, and `bin/link` diffs it rather than overwriting it.
+- **`autoMode` goes in `settings.private.json`, never `claude/settings.json`.** It describes private work repos, and gitleaks cannot tell that from anything else.
 - **`claude/CLAUDE.md` is the global file, not instructions for this repo.** A session working in `claude/` loads it a second time as directory-scoped context — harmless, since it is already loaded globally, but do not "fix" it by writing repo guidance into it. Repo guidance goes in the root `AGENTS.md`.
 
 ## CI
