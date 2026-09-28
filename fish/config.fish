@@ -9,7 +9,7 @@ end
 fish_add_path --path /Applications/Postgres.app/Contents/Versions/latest/bin
 
 # ASDF configuration code
-if test -z $ASDF_DATA_DIR
+if test -z "$ASDF_DATA_DIR"
     set _asdf_shims "$HOME/.asdf/shims"
 else
     set _asdf_shims "$ASDF_DATA_DIR/shims"
@@ -23,9 +23,6 @@ end
 set --erase _asdf_shims
 
 fish_add_path --path $HOME/.local/bin
-
-# Make it so we always open from Cursor classic.
-alias c 'cursor --classic'
 
 # Secrets and machine-only settings. This file sits outside the repo, so
 # nothing in it can be committed by accident.

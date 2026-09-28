@@ -26,7 +26,7 @@ The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I crea
 
 ### fish config — `fish/`
 
-My [fish](https://fishshell.com) `config.fish`: PATH, asdf's shims, and a couple of aliases. Only that one file is tracked. Fish writes `fish_variables` into the same directory, and installers add their own generated functions and completions there. Those files are machine state, so on a fresh machine they come back from the tools that write them:
+My [fish](https://fishshell.com) `config.fish`: PATH setup, including asdf's shims. Only that one file is tracked. Fish writes `fish_variables` into the same directory, and installers add their own generated functions and completions there. Those files are machine state, so on a fresh machine they come back from the tools that write them:
 
 - `conf.d/rustup.fish` — installing rustup
 - `completions/asdf.fish` — `asdf completion fish > ~/.config/fish/completions/asdf.fish`
