@@ -1,0 +1,18 @@
+[user]
+	email = zorn@zornlabs.com
+	name = Mike Zornek
+[difftool "sourcetree"]
+	cmd = opendiff \"$LOCAL\" \"$REMOTE\"
+	path = 
+[mergetool "sourcetree"]
+	cmd = /Applications/Sourcetree.app/Contents/Resources/opendiff-w.sh \"$LOCAL\" \"$REMOTE\" -ancestor \"$BASE\" -merge \"$MERGED\"
+	trustExitCode = true
+[commit]
+	template = ~/.stCommitMsg
+[init]
+	defaultBranch = main
+# Machine-only or secret settings, such as a url.*.insteadOf with a token.
+# Untracked on purpose, and git skips it when it is missing. Keep it last so
+# it overrides anything above.
+[include]
+	path = ~/.config/git/config.local

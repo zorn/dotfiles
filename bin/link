@@ -56,6 +56,12 @@ link_path "$repo_root/worktrunk/hooks" \
 link_path "$repo_root/fish/config.fish" \
   "$HOME/.config/fish/config.fish" 'fish/config.fish'
 
+# git's config and global ignore, at the XDG paths git reads by default. Link
+# the files, not ~/.config/git itself: git and credential helpers write machine
+# state there.
+link_path "$repo_root/git/config" "$HOME/.config/git/config" 'git/config'
+link_path "$repo_root/git/ignore" "$HOME/.config/git/ignore" 'git/ignore'
+
 # Not a symlink, but it belongs with them: without it the pre-commit secret
 # scan in githooks/ never runs. Relative, so each worktree uses its own copy.
 if [ "$(git -C "$repo_root" config core.hooksPath || true)" = githooks ]; then
@@ -94,6 +100,15 @@ printf '\n%d linked, %d skipped, %d orphaned\n' "$linked" "$skipped" "$orphans"
 if [ "$orphans" -gt 0 ]; then
   printf '\nOrphans are symlinks to skills this repo renamed or removed. Delete\n'
   printf 'them by hand once you are sure nothing still points at the old name.\n'
+fi
+
+# git reads ~/.gitconfig after the XDG file, so its values win, and
+# `git config --global` writes there whenever it exists. Either way the tracked
+# config stops being the one in effect, and nothing else would say so.
+if [ -f "$HOME/.gitconfig" ]; then
+  printf '\nWARNING: %s exists and overrides git/config. Move anything it\n' \
+    "$HOME/.gitconfig"
+  printf 'holds into git/config or ~/.config/git/config.local, then delete it.\n'
 fi
 
 if [ "$skipped" -gt 0 ]; then
