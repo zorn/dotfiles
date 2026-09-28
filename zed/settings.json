@@ -1,0 +1,131 @@
+// Zed settings
+//
+// For information on how to configure Zed, see the Zed
+// documentation: https://zed.dev/docs/configuring-zed
+//
+// To see all of Zed's default settings without changing your
+// custom settings, run the `open default settings` command
+// from the command palette or from `Zed` application menu.
+{
+  "auto_install_extensions": {
+    "codebook": true,
+    "dockerfile": true,
+    "elixir": true,
+    "git-firefly": true,
+    "html": true,
+    "log": true,
+    "rlsp-yaml": true,
+    "sql": true,
+    "toml": true,
+  },
+  "show_edit_predictions": false,
+  "terminal": {
+    "dock": "bottom",
+  },
+  "edit_predictions": {
+    "copilot": {
+      "enable_next_edit_suggestions": true,
+    },
+    "provider": "copilot",
+  },
+  "soft_wrap": "editor_width",
+  "agent_servers": {
+    "github-copilot-cli": {
+      "type": "registry",
+    },
+    "claude-acp": {
+      "default_config_options": {
+        "model": "default",
+      },
+      "type": "registry",
+    },
+  },
+  "proxy": "",
+  "git": {
+    "inline_blame": {
+      "enabled": false,
+    },
+  },
+  "agent_ui_font_size": 15.0,
+  "buffer_line_height": "comfortable",
+  "buffer_font_weight": 400.0,
+  "buffer_font_family": "MonoLisa",
+  "cli_default_open_behavior": "new_window",
+  "theme": "Ayu Mirage",
+  "project_panel": {
+    "dock": "left",
+  },
+  "outline_panel": {
+    "dock": "left",
+  },
+  "collaboration_panel": {
+    "dock": "left",
+  },
+  "agent": {
+    "dock": "right",
+    "favorite_models": [],
+    "model_parameters": [],
+  },
+  "git_panel": {
+    "dock": "left",
+  },
+  "buffer_font_size": 14.0,
+  "languages": {
+    "Markdown": {
+      "show_edit_predictions": false,
+    },
+    "CSS": {
+      "language_servers": [
+        "tailwindcss-intellisense-css",
+        "!vscode-css-language-server",
+        "...",
+      ],
+    },
+    "Elixir": {
+      "language_servers": [
+        "expert",
+        "tailwindcss-language-server",
+        "!elixir-ls",
+        "!dexter",
+        "!next-ls",
+        "!lexical",
+        "...",
+      ],
+    },
+    "EEx": {
+      "language_servers": [
+        "expert",
+        "tailwindcss-language-server",
+        "!elixir-ls",
+        "!dexter",
+        "!next-ls",
+        "!lexical",
+        "...",
+      ],
+    },
+    "HEEx": {
+      "language_servers": [
+        "expert",
+        "tailwindcss-language-server",
+        "!elixir-ls",
+        "!dexter",
+        "!next-ls",
+        "!lexical",
+        "...",
+      ],
+    },
+  },
+  "lsp": {
+    "tailwindcss-language-server": {
+      "settings": {
+        "includeLanguages": {
+          "elixir": "html",
+          "heex": "html",
+        },
+        "experimental": {
+          "classRegex": ["class=\"([^\"]*)\"", "class='([^']*)'"],
+        },
+      },
+    },
+  },
+}
