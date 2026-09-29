@@ -4,7 +4,7 @@ updates:
   # github-actions is the only ecosystem here. Grouped into a single PR so a
   # month's bumps arrive as one review rather than one per action.
   #
-  # This does not cover the gitleaks version pinned in `ci.yml`, which is an
+  # This does not cover the Betterleaks version pinned in `ci.yml`, which is an
   # env var holding a release tarball URL and its checksum, not an action
   # reference. Dependabot cannot see it — bumping that stays manual.
   - package-ecosystem: "github-actions"

@@ -2,17 +2,17 @@
 #
 # Scan the staged changes for secrets before the commit exists.
 #
-# CI runs gitleaks too, but only after a push, and this repo is public: a
+# CI runs Betterleaks too, but only after a push, and this repo is public: a
 # credential that reaches GitHub has already been scraped. This is the check
 # that runs early enough to matter. bin/link points core.hooksPath here.
 
 set -euo pipefail
 
 # Fail closed: a missing scanner must not look like a clean scan.
-if ! command -v gitleaks >/dev/null 2>&1; then
-  printf 'pre-commit: gitleaks is not on PATH, so the commit was not scanned.\n' >&2
-  printf '  brew install gitleaks\n' >&2
+if ! command -v betterleaks >/dev/null 2>&1; then
+  printf 'pre-commit: betterleaks is not on PATH, so the commit was not scanned.\n' >&2
+  printf '  brew install betterleaks\n' >&2
   exit 1
 fi
 
-exec gitleaks git --pre-commit --staged --redact --verbose --no-banner
+exec betterleaks git --pre-commit --staged --redact --verbose --no-banner

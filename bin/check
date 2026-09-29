@@ -10,7 +10,7 @@
 # Each CI job runs one section, so the pull request page names the check
 # that failed. The sections are:
 #
-#   secrets    — gitleaks over both the working tree and the commit history
+#   secrets    — Betterleaks over both the working tree and the commit history
 #                reachable from HEAD. This repo is public and git history is
 #                permanent, so a credential that lands in a commit is already
 #                leaked even if the next commit removes it.
@@ -92,8 +92,8 @@ require() {
   missing=1
 }
 
-selected secrets && require gitleaks 'brew install gitleaks' \
-  'https://github.com/gitleaks/gitleaks#installing'
+selected secrets && require betterleaks 'brew install betterleaks' \
+  'https://github.com/betterleaks/betterleaks#installation'
 selected workflows && require actionlint 'brew install actionlint' \
   'https://github.com/rhysd/actionlint/blob/main/docs/install.md'
 selected shell && require shellcheck 'brew install shellcheck' \
@@ -111,7 +111,7 @@ selected link && require jq 'brew install jq' \
 failures=()
 
 # --verbose is what prints the file, line, and rule for each finding; without
-# it gitleaks reports only a count, which is useless for fixing anything.
+# it Betterleaks reports only a count, which is useless for fixing anything.
 # --redact keeps the matched secret itself out of terminal scrollback and out
 # of the public Actions log.
 run_scan() {
@@ -121,13 +121,13 @@ run_scan() {
   printf '==> %s\n' "$label"
 
   local status=0
-  gitleaks "$@" --redact --verbose --no-banner || status=$?
+  betterleaks "$@" --redact --verbose --no-banner || status=$?
 
   case "$status" in
     0) ;;
     1) return 1 ;;
     *)
-      printf 'check: gitleaks exited %d — that is a tool error, not a clean scan.\n' "$status" >&2
+      printf 'check: betterleaks exited %d — that is a tool error, not a clean scan.\n' "$status" >&2
       return 1
       ;;
   esac
@@ -135,9 +135,9 @@ run_scan() {
 
 check_secrets() {
   local failed=0
-  run_scan 'gitleaks: working tree' dir . || failed=1
+  run_scan 'betterleaks: working tree' dir . || failed=1
   printf '\n'
-  run_scan 'gitleaks: commit history' git . || failed=1
+  run_scan 'betterleaks: commit history' git . || failed=1
   return "$failed"
 }
 
@@ -190,10 +190,10 @@ check_link() {
 advise() {
   case "$1" in
     secrets)
-      printf 'A gitleaks finding in the working tree means edit the file. A finding\n' >&2
+      printf 'A Betterleaks finding in the working tree means edit the file. A finding\n' >&2
       printf 'in a commit means rewriting history AND rotating the secret, because\n' >&2
       printf 'if it ever reached GitHub it has already been scraped.\n' >&2
-      printf 'False positive? Annotate the line with a gitleaks:allow comment.\n' >&2
+      printf 'False positive? Annotate the line with a betterleaks:allow comment.\n' >&2
       ;;
     workflows)
       printf 'An actionlint finding means the workflow YAML is wrong — fix it here\n' >&2

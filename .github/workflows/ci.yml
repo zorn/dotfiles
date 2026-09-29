@@ -28,20 +28,20 @@ jobs:
       # Pinned to a version and a digest. This is the job whose whole purpose
       # is supply-chain hygiene, so it does not pipe an unverified tarball
       # into tar. Bumping the version means bumping the checksum with it —
-      # take both from the release's gitleaks_<version>_checksums.txt.
-      - name: Install gitleaks
+      # take both from the release's checksums.txt.
+      - name: Install betterleaks
         env:
-          GITLEAKS_VERSION: 8.30.1
-          GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+          BETTERLEAKS_VERSION: 1.8.1
+          BETTERLEAKS_SHA256: efa407244e1ea8e35f582b8a42becdeac08bdead04f68eb752adda722d583c2a
         run: |
           set -euo pipefail
-          tarball="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
-          mkdir -p "$RUNNER_TEMP/gitleaks"
+          tarball="betterleaks_${BETTERLEAKS_VERSION}_linux_x64.tar.gz"
+          mkdir -p "$RUNNER_TEMP/betterleaks"
           curl -sSfL -o "$RUNNER_TEMP/$tarball" \
-            "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${tarball}"
-          echo "$GITLEAKS_SHA256  $RUNNER_TEMP/$tarball" | sha256sum --check --strict
-          tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/gitleaks" gitleaks
-          echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
+            "https://github.com/betterleaks/betterleaks/releases/download/v${BETTERLEAKS_VERSION}/${tarball}"
+          echo "$BETTERLEAKS_SHA256  $RUNNER_TEMP/$tarball" | sha256sum --check --strict
+          tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/betterleaks" betterleaks
+          echo "$RUNNER_TEMP/betterleaks" >> "$GITHUB_PATH"
 
       - name: Run checks
         run: ./bin/check secrets
@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Pinned and checksum-verified the same way as gitleaks in the secrets
+      # Pinned and checksum-verified the same way as Betterleaks in the secrets
       # job, from the release's actionlint_<version>_checksums.txt. The runner
       # already has shellcheck, which actionlint picks up off PATH to lint
       # `run:` blocks.
