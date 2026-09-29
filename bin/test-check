@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+#
+# Run bin/check against stub tools and check how it picks its sections.
+#
+# Each CI job installs only its own section's tool. A section that runs
+# another's check, or needs another's tool, fails a job for a reason the job
+# never names. The stubs keep this to milliseconds instead of a real scan of
+# the whole history.
+
+set -euo pipefail
+
+# A bare bin/check runs this script, and this script runs a bare bin/check.
+# The nested copy stops here rather than recursing.
+if [ -n "${TEST_CHECK_NESTED:-}" ]; then
+  exit 0
+fi
+export TEST_CHECK_NESTED=1
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+stubs="$(mktemp -d)"
+trap 'rm -rf "$stubs"' EXIT
+
+out="$stubs/check-output"
+status=0
+failed=0
+
+# Linked rather than found on PATH: the PATH below leaves out the directory
+# the real tools live in, which is also where a newer bash usually lives.
+ln -s "$BASH" "$stubs/bash"
+
+stub() {
+  local tool
+  for tool in "$@"; do
+    printf '#!/bin/sh\nexit 0\n' >"$stubs/$tool"
+    chmod +x "$stubs/$tool"
+  done
+}
+
+run_check() {
+  status=0
+  PATH="$stubs:/usr/bin:/bin" "$repo_root/bin/check" "$@" >"$out" 2>&1 || status=$?
+}
+
+exited() {
+  [ "$status" -eq "$1" ]
+}
+
+assert() {
+  local label="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    printf '  pass  %s\n' "$label"
+  else
+    printf '  FAIL  %s\n' "$label"
+    sed 's/^/        /' "$out"
+    failed=1
+  fi
+}
+
+refute() {
+  local label="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    printf '  FAIL  %s\n' "$label"
+    sed 's/^/        /' "$out"
+    failed=1
+  else
+    printf '  pass  %s\n' "$label"
+  fi
+}
+
+stub gitleaks actionlint shellcheck python3 jq
+
+# Exit status is not asserted: bin/test-link fails against a stub jq, and
+# which sections ran is the point here.
+run_check
+for header in gitleaks actionlint shellcheck check-skills test-link; do
+  assert "a bare run runs $header" grep -q "^==> $header" "$out"
+done
+
+run_check skills
+assert 'a named section passes' exited 0
+assert 'a named section runs nothing else' test "$(grep -c '^==>' "$out")" -eq 1
+assert 'a named section runs' grep -q '^==> check-skills' "$out"
+
+run_check skils
+refute 'an unknown section fails' exited 0
+assert 'an unknown section lists the real ones' grep -q 'secrets workflows shell skills link' "$out"
+refute 'an unknown section runs nothing' grep -q '^==>' "$out"
+
+run_check skills skils
+refute 'a mix with an unknown section runs nothing' grep -q '^==>' "$out"
+
+# CI runs only named sections, so a section with no job never runs there.
+sections="$(sed -n 's/^Sections: //p' "$out" | tr ' ' '\n' | sort)"
+jobs="$(sed -n 's|^ *run: ./bin/check \([a-z]*\)$|\1|p' "$repo_root/.github/workflows/ci.yml" | sort)"
+assert 'every section has a CI job' test "$sections" = "$jobs"
+
+# The skills job installs no gitleaks, so the skills section must not ask.
+rm "$stubs/gitleaks"
+run_check skills
+assert "a section runs without another section's tool" exited 0
+
+# Remove actionlint, not python3 or jq. It is never in /usr/bin, so the stub
+# is the only copy on PATH.
+rm "$stubs/actionlint"
+run_check secrets
+assert "a section still requires its own tool" exited 127
+assert 'a missing tool is named' grep -q 'brew install gitleaks' "$out"
+refute "a missing tool is the only one named" grep -q 'brew install actionlint' "$out"
+
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi
