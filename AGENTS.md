@@ -50,4 +50,4 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 Config mixing shareable settings with a secret gets split: the shareable half lives here, the secret in an untracked sibling the tracked file loads at runtime. A file with no way to load another, like Claude Code's `settings.json`, is merged with its sibling by `bin/link` instead.
 
-Treat a history finding as a live incident. The repo is public and git history is permanent, so a credential that reached GitHub has already been scraped — fixing it means rewriting history **and** rotating the secret. A genuine false positive gets a `betterleaks:allow` comment at the line, never a `.betterleaksignore` entry.
+Treat a history finding as a live incident. The repo is public and git history is permanent, so a credential that reached GitHub has already been scraped — fixing it means rewriting history **and** rotating the secret. A genuine false positive gets a `betterleaks:allow` comment at the line, never an entry in an ignore file.

@@ -53,7 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Pinned and checksum-verified the same way as betterleaks in the secrets
+      # Pinned and checksum-verified the same way as Betterleaks in the secrets
       # job, from the release's actionlint_<version>_checksums.txt. The runner
       # already has shellcheck, which actionlint picks up off PATH to lint
       # `run:` blocks.

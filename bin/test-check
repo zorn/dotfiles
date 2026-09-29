@@ -97,7 +97,7 @@ sections="$(sed -n 's/^Sections: //p' "$out" | tr ' ' '\n' | sort)"
 jobs="$(sed -n 's|^ *run: ./bin/check \([a-z]*\)$|\1|p' "$repo_root/.github/workflows/ci.yml" | sort)"
 assert 'every section has a CI job' test "$sections" = "$jobs"
 
-# The skills job installs no betterleaks, so the skills section must not ask.
+# The skills job installs no Betterleaks, so the skills section must not ask.
 rm "$stubs/betterleaks"
 run_check skills
 assert "a section runs without another section's tool" exited 0

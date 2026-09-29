@@ -111,7 +111,7 @@ selected link && require jq 'brew install jq' \
 failures=()
 
 # --verbose is what prints the file, line, and rule for each finding; without
-# it betterleaks reports only a count, which is useless for fixing anything.
+# it Betterleaks reports only a count, which is useless for fixing anything.
 # --redact keeps the matched secret itself out of terminal scrollback and out
 # of the public Actions log.
 run_scan() {
@@ -190,7 +190,7 @@ check_link() {
 advise() {
   case "$1" in
     secrets)
-      printf 'A betterleaks finding in the working tree means edit the file. A finding\n' >&2
+      printf 'A Betterleaks finding in the working tree means edit the file. A finding\n' >&2
       printf 'in a commit means rewriting history AND rotating the secret, because\n' >&2
       printf 'if it ever reached GitHub it has already been scraped.\n' >&2
       printf 'False positive? Annotate the line with a betterleaks:allow comment.\n' >&2
