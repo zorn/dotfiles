@@ -11,11 +11,9 @@ permissions:
 
 jobs:
   # One job per bin/check section, so the pull request page names the check
-  # that failed rather than one tick for everything. Each job name is a
-  # required-status-check context on the protect-main ruleset: renaming or
-  # adding a job means updating the ruleset too, or the check silently stops
-  # being required. Each job runs its section of bin/check, never the check
-  # itself inlined, so there is still one definition of "green".
+  # that failed. Each job name is a required-status-check context on the
+  # protect-main ruleset. Renaming or adding a job means updating the ruleset
+  # too, or the check silently stops being required.
   secrets:
     name: secrets
     runs-on: ubuntu-latest
@@ -55,10 +53,10 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      # Pinned the same way as gitleaks in the secrets job, for the same
-      # reason — a verified checksum, from the release's
-      # actionlint_<version>_checksums.txt. The runner already has
-      # shellcheck, which actionlint picks up off PATH to lint `run:` blocks.
+      # Pinned and checksum-verified the same way as gitleaks in the secrets
+      # job, from the release's actionlint_<version>_checksums.txt. The runner
+      # already has shellcheck, which actionlint picks up off PATH to lint
+      # `run:` blocks.
       - name: Install actionlint
         env:
           ACTIONLINT_VERSION: 1.7.12

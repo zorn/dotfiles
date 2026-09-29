@@ -18,18 +18,16 @@
 #                safety net: a typo in an expression or a bad runs-on label is
 #                only discovered when the workflow runs, which for a
 #                push-triggered job means after the mistake is already on
-#                main. It also lints
-#                `run:` blocks via shellcheck, which is what actually guards
-#                the tool install scripts in ci.yml.
+#                main. It also lints `run:` blocks via shellcheck, which is
+#                what actually guards the tool install scripts in ci.yml.
 #   shell      — shellcheck over every bash script in bin/, claude/,
 #                worktrunk/hooks, and githooks. actionlint covers the shell inside
 #                workflow `run:` blocks and nothing else; a script shipped
 #                inside a skill or as a worktrunk hook is otherwise wholly
 #                unchecked. (Written this way round because a comment
 #                beginning with the tool's own name parses as a shellcheck
-#                directive.) Also bin/test-check, which checks that each
-#                section runs alone and asks only for its own tool, since a
-#                CI job installs nothing else.
+#                directive.) It also runs bin/test-check. That script checks
+#                that each section runs alone and asks only for its own tool.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -48,37 +46,38 @@ usage() {
   printf 'With no section named, every section runs.\n' >&2
 }
 
-# Each CI job runs one of these, so the job's name on the pull request page
-# says which check failed. A bare bin/check runs them all.
 all_sections=(secrets workflows shell skills link)
+
+contains() {
+  local needle="$1" item
+  shift
+  for item in "$@"; do
+    [ "$item" = "$needle" ] && return 0
+  done
+  return 1
+}
 
 if [ "$#" -eq 0 ]; then
   sections=("${all_sections[@]}")
 else
   sections=()
   for section in "$@"; do
-    case " ${all_sections[*]} " in
-      *" $section "*) sections+=("$section") ;;
-      *)
-        printf 'check: unknown section %s\n\n' "$section" >&2
-        usage
-        exit 2
-        ;;
-    esac
+    if ! contains "$section" "${all_sections[@]}"; then
+      printf 'check: unknown section %s\n\n' "$section" >&2
+      usage
+      exit 2
+    fi
+    sections+=("$section")
   done
 fi
 
 selected() {
-  case " ${sections[*]} " in
-    *" $1 "*) return 0 ;;
-    *) return 1 ;;
-  esac
+  contains "$1" "${sections[@]}"
 }
 
 # Every tool is checked up front and reported together, so a fresh machine
 # learns everything it is missing in one run instead of one tool per attempt.
-# Only the selected sections' tools are required, because each CI job
-# installs only the tool its own section needs.
+# Only the selected sections' tools are required.
 missing=0
 
 require() {
@@ -109,7 +108,6 @@ selected link && require jq 'brew install jq' \
 
 [ "$missing" -eq 0 ] || exit 127
 
-# The sections that failed, so the closing advice covers only those.
 failures=()
 
 # --verbose is what prints the file, line, and rule for each finding; without
