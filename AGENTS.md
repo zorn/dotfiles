@@ -15,7 +15,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 - **Link only `git/config` and `git/ignore`, never `~/.config/git/`.** Credential helpers write machine state there. Machine-only or secret git settings go in the untracked `~/.config/git/config.local`, which `git/config` includes.
 - **Link only `zed/settings.json`, never `~/.config/zed/`.** Zed keeps its rules database there, and its rules-to-skills migration may write an `AGENTS.md` there. When a custom theme arrives, link `themes/` whole — Zed never writes there.
 - **`~/.claude/settings.json` is built, not linked — edit `claude/settings.json`, then re-run `bin/link`.** It merges in the untracked `~/.claude/settings.private.json` ([ADR 0005](docs/adr/0005-built-claude-settings.md)).
-- **`autoMode` goes in `settings.private.json`, never `claude/settings.json`.** It describes private work repos, and gitleaks cannot flag it, since it is prose, not a credential.
+- **`autoMode` goes in `settings.private.json`, never `claude/settings.json`.** It describes private work repos, and Betterleaks cannot flag it, since it is prose, not a credential.
 - **`claude/CLAUDE.md` is the global file, not instructions for this repo.** A session working in `claude/` loads it a second time as directory-scoped context — harmless, since it is already loaded globally, but do not "fix" it by writing repo guidance into it. Repo guidance goes in the root `AGENTS.md`.
 
 ## CI
@@ -24,8 +24,8 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 - **Each job name in `ci.yml` is a required-status-check context on the `protect-main` ruleset.** Renaming a job silently un-requires it, and a new section's job is not required until the ruleset lists it. Update the ruleset before merging: once the pull request reports the new context, require it, then drop the old one.
 - The ruleset lives in repo settings, so nothing here enforces it and it can be switched off without leaving a diff. Verify rather than trust: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context'` should list every job in `ci.yml`.
-- Tool pins in `ci.yml` are a version plus a tarball checksum, and **Dependabot cannot see them** — no ecosystem tracks a curl'd release, and the checksum is not what hides them. Bumping is manual; move the checksum with the version, from that release's `<tool>_<version>_checksums.txt`.
-- **`shellcheck`, `python3` and `jq` are unpinned on purpose** — unlike gitleaks and actionlint, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.
+- Tool pins in `ci.yml` are a version plus a tarball checksum, and **Dependabot cannot see them** — no ecosystem tracks a curl'd release, and the checksum is not what hides them. Bumping is manual; move the checksum with the version, from that release's checksums file.
+- **`shellcheck`, `python3` and `jq` are unpinned on purpose** — unlike Betterleaks and actionlint, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.
 
 ## Skill validation
 
@@ -50,4 +50,4 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 Config mixing shareable settings with a secret gets split: the shareable half lives here, the secret in an untracked sibling the tracked file loads at runtime. A file with no way to load another, like Claude Code's `settings.json`, is merged with its sibling by `bin/link` instead.
 
-Treat a history finding as a live incident. The repo is public and git history is permanent, so a credential that reached GitHub has already been scraped — fixing it means rewriting history **and** rotating the secret. A genuine false positive gets a `gitleaks:allow` comment at the line, never a `.gitleaksignore` entry.
+Treat a history finding as a live incident. The repo is public and git history is permanent, so a credential that reached GitHub has already been scraped — fixing it means rewriting history **and** rotating the secret. A genuine false positive gets a `betterleaks:allow` comment at the line, never a `.betterleaksignore` entry.

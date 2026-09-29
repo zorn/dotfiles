@@ -65,14 +65,14 @@ Nothing in this repo is a credential, and nothing ever should be.
 
 Config that mixes shareable settings with a secret gets split: the shareable part lives here, the secret lives in an untracked sibling file that the tracked one loads at runtime. Claude Code's `settings.json` cannot load another file, so `bin/link` merges it with its sibling instead.
 
-[gitleaks](https://gitleaks.io) runs on every pull request as a required check, so a leak blocks the merge. It scans the working tree *and* the commit history, because this repo is public and git history is permanent — a credential that reaches GitHub is already scraped, and deleting it in the next commit fixes nothing.
+[Betterleaks](https://github.com/betterleaks/betterleaks) runs on every pull request as a required check, so a leak blocks the merge. It scans the working tree *and* the commit history, because this repo is public and git history is permanent — a credential that reaches GitHub is already scraped, and deleting it in the next commit fixes nothing.
 
-A pre-commit hook in `githooks/` runs gitleaks over the staged changes, so a secret is caught before the commit exists rather than after the push. It refuses the commit when gitleaks is not installed, because a scan that did not run must not look like a clean one.
+A pre-commit hook in `githooks/` runs Betterleaks over the staged changes, so a secret is caught before the commit exists rather than after the push. It refuses the commit when Betterleaks is not installed, because a scan that did not run must not look like a clean one.
 
 To run every check before you push:
 
 ```bash
-brew install gitleaks actionlint shellcheck jq
+brew install betterleaks actionlint shellcheck jq
 ./bin/check
 ```
 
