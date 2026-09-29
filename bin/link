@@ -157,6 +157,15 @@ link_path "$repo_root/git/ignore" "$HOME/.config/git/ignore" 'git/ignore'
 link_path "$repo_root/zed/settings.json" \
   "$HOME/.config/zed/settings.json" 'zed/settings.json'
 
+# asdf's global tool versions. `asdf set --home` writes through the link, so
+# a version bump shows up here as a diff.
+link_path "$repo_root/asdf/tool-versions" "$HOME/.tool-versions" 'asdf/tool-versions'
+
+# zsh is still the login shell, and GUI apps build their environment by
+# starting a zsh login shell. These give them Homebrew and cargo.
+link_path "$repo_root/zsh/zprofile" "$HOME/.zprofile" 'zsh/zprofile'
+link_path "$repo_root/zsh/zshenv" "$HOME/.zshenv" 'zsh/zshenv'
+
 # Not a symlink, but it belongs with them: without it the pre-commit secret
 # scan in githooks/ never runs. Relative, so each worktree uses its own copy.
 if [ "$(git -C "$repo_root" config core.hooksPath || true)" = githooks ]; then

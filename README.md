@@ -42,6 +42,14 @@ Secrets and machine-only settings go in `~/.config/fish/local.fish`, which `conf
 
 My [Zed](https://zed.dev) `settings.json`. Its `auto_install_extensions` list makes a fresh machine install the extensions the language-server settings rely on. Only that file is tracked. My theme is a built-in, so `themes/` is empty and not tracked. The rules database in `~/.config/zed/prompts/` is binary and stays out.
 
+### asdf tool versions — `asdf/`
+
+My global [asdf](https://asdf-vm.com) `.tool-versions`: the Erlang, Elixir, Ruby, and Node versions a directory gets when no project pins its own. `asdf set --home` writes through the symlink, so a version bump shows up here as a diff.
+
+### zsh startup files — `zsh/`
+
+I work in fish, but zsh is still my login shell, and GUI apps like Zed build their environment by starting a zsh login shell. `zprofile` puts Homebrew on that PATH and `zshenv` puts cargo there. Without them, those apps can't find either.
+
 ## Setup
 
 ```bash
@@ -49,7 +57,7 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `CLAUDE.md`, `keybindings.json`, and `statusline-command.sh` to the same names. It builds `~/.claude/settings.json` instead, from `claude/settings.json` and the private file. It links the worktrunk config into `~/.config/worktrunk/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, and `zed/settings.json` into `~/.config/zed/` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a linked file takes effect immediately — no reinstall step. After editing `claude/settings.json`, re-run `bin/link`. It rebuilds the live file unless a change made in Claude Code's UI is there, which it shows as a diff instead of overwriting.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `CLAUDE.md`, `keybindings.json`, and `statusline-command.sh` to the same names. It builds `~/.claude/settings.json` instead, from `claude/settings.json` and the private file. It links the worktrunk config into `~/.config/worktrunk/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, `zed/settings.json` into `~/.config/zed/`, and `asdf/tool-versions`, `zsh/zprofile`, and `zsh/zshenv` to their dotted names in `~` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a linked file takes effect immediately — no reinstall step. After editing `claude/settings.json`, re-run `bin/link`. It rebuilds the live file unless a change made in Claude Code's UI is there, which it shows as a diff instead of overwriting.
 
 ## Secrets
 
