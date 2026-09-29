@@ -68,7 +68,7 @@ Stack the pair vertically rather than side by side — two half-width images mak
 Mechanical checks, no judgment in any of them:
 
 - **Title** matches `^(fix|feat|docs|style|refactor|perf|test|build|ci|chore|revert)(\(.+\))?!?: [^A-Z].*$`, which is the composite of the `types` list and the `subjectPattern` that the repo's Lint PR workflow passes to `amannn/action-semantic-pull-request`. Read that workflow rather than trusting the regex if a title is rejected.
-- **Title ends in `[skip render]` when step 1 skipped the deploy.** A suffix, because the pattern needs the type first.
+- **Title ends in `[skip render]` when step 1 skipped the deploy.** A suffix, because the pattern needs the type first. The decision holds only for the diff it was made on, so make it again whenever the PR gains a commit or its body is rewritten, and drop the suffix once any file reaches the running app.
 - **The commit subject too, where the repo squashes from the commit.** `gh api repos/<owner>/<repo> --jq .squash_merge_commit_title` returns `COMMIT_OR_PR_TITLE` in some repos, and there a single-commit PR lands on `main` under the *commit* subject while the lint only ever read the title. That subject needs the `[skip render]` suffix too, or Render never sees it.
 - **Issue link present** — `Closes #<n>` on the first line when merging resolves the issue, `Refs #<n>` when it does not. Repeat the keyword per issue (`Closes #10, closes #12`); one keyword does not distribute across a comma list. Closing keywords fire only when the PR targets the default branch.
 - **Paragraphs are single unwrapped lines.**
