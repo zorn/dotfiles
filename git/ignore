@@ -3,3 +3,6 @@
 
 # Claude Code local settings
 .claude/settings.local.json
+
+# Worktrees Claude Code creates for agents run in isolation
+.claude/worktrees/
