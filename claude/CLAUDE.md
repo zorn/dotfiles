@@ -11,6 +11,12 @@ This means:
 
 Commits and PRs are attributed solely to the human author running the session.
 
+## Review comment threads
+
+When you address a review comment on a pull request, reply in its thread to say what you did, but leave the thread open. Resolve a thread only when I explicitly tell you to.
+
+Resolving collapses the thread, so I lose the chance to check the fix against the comment before it disappears from view. Whether a comment is settled is my call, not yours.
+
 ## Write to be scanned
 
 Length changes how a reader engages. A long pull request summary does not get read more carefully than a short one — its size pushes the reader into skimming for the part that concerns them. Keep prose tight so that what you wrote is what gets read.
