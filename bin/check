@@ -6,16 +6,19 @@
 # definition of "green" instead of two that drift apart. If this passes
 # locally, the pull request comes back green.
 #
-# Today that means:
+# Name one or more sections to run only those; with none named, all run.
+# Each CI job runs one section, so the pull request page names the check
+# that failed. The sections are:
 #
-#   gitleaks   — over both the working tree and the commit history reachable
-#                from HEAD. This repo is public and git history is permanent,
-#                so a credential that lands in a commit is already leaked even
-#                if the next commit removes it.
-#   actionlint — over .github/workflows. Workflow YAML has no other safety
-#                net: a typo in an expression or a bad runs-on label is only
-#                discovered when the workflow runs, which for a push-triggered
-#                job means after the mistake is already on main. It also lints
+#   secrets    — gitleaks over both the working tree and the commit history
+#                reachable from HEAD. This repo is public and git history is
+#                permanent, so a credential that lands in a commit is already
+#                leaked even if the next commit removes it.
+#   workflows  — actionlint over .github/workflows. Workflow YAML has no other
+#                safety net: a typo in an expression or a bad runs-on label is
+#                only discovered when the workflow runs, which for a
+#                push-triggered job means after the mistake is already on
+#                main. It also lints
 #                `run:` blocks via shellcheck, which is what actually guards
 #                the tool install scripts in ci.yml.
 #   shell      — shellcheck over every bash script in bin/, claude/,
@@ -24,7 +27,9 @@
 #                inside a skill or as a worktrunk hook is otherwise wholly
 #                unchecked. (Written this way round because a comment
 #                beginning with the tool's own name parses as a shellcheck
-#                directive.)
+#                directive.) Also bin/test-check, which checks that each
+#                section runs alone and asks only for its own tool, since a
+#                CI job installs nothing else.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -37,8 +42,43 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$repo_root"
 
+usage() {
+  printf 'usage: bin/check [section...]\n\n' >&2
+  printf 'Sections: %s\n' "${all_sections[*]}" >&2
+  printf 'With no section named, every section runs.\n' >&2
+}
+
+# Each CI job runs one of these, so the job's name on the pull request page
+# says which check failed. A bare bin/check runs them all.
+all_sections=(secrets workflows shell skills link)
+
+if [ "$#" -eq 0 ]; then
+  sections=("${all_sections[@]}")
+else
+  sections=()
+  for section in "$@"; do
+    case " ${all_sections[*]} " in
+      *" $section "*) sections+=("$section") ;;
+      *)
+        printf 'check: unknown section %s\n\n' "$section" >&2
+        usage
+        exit 2
+        ;;
+    esac
+  done
+fi
+
+selected() {
+  case " ${sections[*]} " in
+    *" $1 "*) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
 # Every tool is checked up front and reported together, so a fresh machine
 # learns everything it is missing in one run instead of one tool per attempt.
+# Only the selected sections' tools are required, because each CI job
+# installs only the tool its own section needs.
 missing=0
 
 require() {
@@ -53,24 +93,24 @@ require() {
   missing=1
 }
 
-require gitleaks 'brew install gitleaks' \
+selected secrets && require gitleaks 'brew install gitleaks' \
   'https://github.com/gitleaks/gitleaks#installing'
-require actionlint 'brew install actionlint' \
+selected workflows && require actionlint 'brew install actionlint' \
   'https://github.com/rhysd/actionlint/blob/main/docs/install.md'
-require shellcheck 'brew install shellcheck' \
+selected shell && require shellcheck 'brew install shellcheck' \
   'https://github.com/koalaman/shellcheck#installing'
 # bin/check-skills is Python, which is why python3 is a tool this needs. It has
 # no third-party dependencies, so a stock interpreter is the whole requirement.
-require python3 'brew install python' \
+selected skills && require python3 'brew install python' \
   'https://www.python.org/downloads/'
-
 # bin/link builds ~/.claude/settings.json with jq, so bin/test-link needs it.
-require jq 'brew install jq' \
+selected link && require jq 'brew install jq' \
   'https://jqlang.org/download/'
 
 [ "$missing" -eq 0 ] || exit 127
 
-failed=0
+# The sections that failed, so the closing advice covers only those.
+failures=()
 
 # --verbose is what prints the file, line, and rule for each finding; without
 # it gitleaks reports only a count, which is useless for fixing anything.
@@ -87,76 +127,107 @@ run_scan() {
 
   case "$status" in
     0) ;;
-    1) failed=1 ;;
+    1) return 1 ;;
     *)
       printf 'check: gitleaks exited %d — that is a tool error, not a clean scan.\n' "$status" >&2
-      failed=1
+      return 1
       ;;
   esac
-
-  printf '\n'
 }
 
-run_scan 'gitleaks: working tree' dir .
-run_scan 'gitleaks: commit history' git .
+check_secrets() {
+  local failed=0
+  run_scan 'gitleaks: working tree' dir . || failed=1
+  printf '\n'
+  run_scan 'gitleaks: commit history' git . || failed=1
+  return "$failed"
+}
 
-printf '==> actionlint: workflow YAML\n'
-actionlint_failed=0
-# No path arguments, so actionlint discovers .github/workflows itself and a
-# new workflow is covered the moment it is added. -color because CI is not a
-# TTY and would otherwise emit unhighlighted walls of text.
-actionlint -color || actionlint_failed=1
-if [ "$actionlint_failed" -ne 0 ]; then
-  failed=1
-else
+check_workflows() {
+  printf '==> actionlint: workflow YAML\n'
+  # No path arguments, so actionlint discovers .github/workflows itself and a
+  # new workflow is covered the moment it is added. -color because CI is not a
+  # TTY and would otherwise emit unhighlighted walls of text.
+  actionlint -color || return 1
   printf 'No workflow problems found.\n'
-fi
-printf '\n'
+}
 
-printf '==> shellcheck: shell scripts\n'
-# Found by shebang rather than named, so a script is covered the moment it is
-# added — and bin/check-skills, which is Python, is not. Skills ship scripts
-# too, and a skill's script is the half of a skill nothing else validates:
-# check-skills compiles its Python and says nothing about its shell. Hook
-# scripts in worktrunk/hooks and githooks have no other check at all.
-shell_scripts=()
-while IFS= read -r candidate; do
-  if head -n 1 "$candidate" | grep -q '^#!.*bash'; then
-    shell_scripts+=("$candidate")
-  fi
-done < <(find bin claude worktrunk/hooks githooks -type f -not -name '*.py' -not -name '*.md' | sort)
-if [ "${#shell_scripts[@]}" -gt 0 ]; then
-  if shellcheck "${shell_scripts[@]}"; then
+check_shell() {
+  printf '==> shellcheck: shell scripts\n'
+  # Found by shebang rather than named, so a script is covered the moment it is
+  # added — and bin/check-skills, which is Python, is not. Skills ship scripts
+  # too, and a skill's script is the half of a skill nothing else validates:
+  # check-skills compiles its Python and says nothing about its shell. Hook
+  # scripts in worktrunk/hooks and githooks have no other check at all.
+  local shell_scripts=() candidate
+  while IFS= read -r candidate; do
+    if head -n 1 "$candidate" | grep -q '^#!.*bash'; then
+      shell_scripts+=("$candidate")
+    fi
+  done < <(find bin claude worktrunk/hooks githooks -type f -not -name '*.py' -not -name '*.md' | sort)
+  if [ "${#shell_scripts[@]}" -gt 0 ]; then
+    shellcheck "${shell_scripts[@]}" || return 1
     printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"
-  else
-    failed=1
   fi
-fi
-printf '\n'
 
-# The self-test runs first: a validator that cannot fail would report every
-# skill as fine, which is the same silent pass the validator exists to prevent.
-printf '==> check-skills: skill frontmatter, links and scripts\n'
-./bin/check-skills --self-test || failed=1
-./bin/check-skills || failed=1
-printf '\n'
+  printf '\n==> test-check: section selection\n'
+  ./bin/test-check
+}
 
-printf '==> test-link: settings build\n'
-./bin/test-link || failed=1
-printf '\n'
+check_skills() {
+  # The self-test runs first: a validator that cannot fail would report every
+  # skill as fine, which is the same silent pass the validator exists to prevent.
+  printf '==> check-skills: skill frontmatter, links and scripts\n'
+  local failed=0
+  ./bin/check-skills --self-test || failed=1
+  ./bin/check-skills || failed=1
+  return "$failed"
+}
 
-if [ "$failed" -ne 0 ]; then
-  printf 'FAILED. Do not push.\n\n' >&2
-  printf 'A gitleaks finding in the working tree means edit the file. A finding\n' >&2
-  printf 'in a commit means rewriting history AND rotating the secret, because\n' >&2
-  printf 'if it ever reached GitHub it has already been scraped.\n' >&2
-  printf 'False positive? Annotate the line with a gitleaks:allow comment.\n\n' >&2
-  printf 'An actionlint finding means the workflow YAML is wrong — fix it here\n' >&2
-  printf 'rather than discovering it on a run against main.\n\n' >&2
-  printf 'A check-skills finding means a skill would not load, or would load\n' >&2
-  printf 'with a mangled description. Nothing at runtime reports either one.\n\n' >&2
-  printf 'A test-link failure means bin/link could overwrite a change made in\n' >&2
-  printf "Claude Code's UI. Fix bin/link before running it on a real HOME.\n" >&2
+check_link() {
+  printf '==> test-link: settings build\n'
+  ./bin/test-link
+}
+
+advise() {
+  case "$1" in
+    secrets)
+      printf 'A gitleaks finding in the working tree means edit the file. A finding\n' >&2
+      printf 'in a commit means rewriting history AND rotating the secret, because\n' >&2
+      printf 'if it ever reached GitHub it has already been scraped.\n' >&2
+      printf 'False positive? Annotate the line with a gitleaks:allow comment.\n' >&2
+      ;;
+    workflows)
+      printf 'An actionlint finding means the workflow YAML is wrong — fix it here\n' >&2
+      printf 'rather than discovering it on a run against main.\n' >&2
+      ;;
+    shell)
+      printf 'A shellcheck finding means a script in the repo is wrong — fix it\n' >&2
+      printf 'before something runs it. A test-check failure means a CI job\n' >&2
+      printf 'would run the wrong section, or ask for a tool it never installed.\n' >&2
+      ;;
+    skills)
+      printf 'A check-skills finding means a skill would not load, or would load\n' >&2
+      printf 'with a mangled description. Nothing at runtime reports either one.\n' >&2
+      ;;
+    link)
+      printf 'A test-link failure means bin/link could overwrite a change made in\n' >&2
+      printf "Claude Code's UI. Fix bin/link before running it on a real HOME.\n" >&2
+      ;;
+  esac
+  printf '\n' >&2
+}
+
+for section in "${sections[@]}"; do
+  "check_$section" || failures+=("$section")
+  printf '\n'
+done
+
+if [ "${#failures[@]}" -gt 0 ]; then
+  printf 'FAILED: %s. Do not push.\n\n' "${failures[*]}" >&2
+  for section in "${failures[@]}"; do
+    advise "$section"
+  done
   exit 1
 fi
 

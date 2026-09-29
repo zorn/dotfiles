@@ -1,0 +1,92 @@
+#!/usr/bin/env bash
+#
+# Run bin/check against stub tools and check how it picks its sections.
+#
+# Each CI job runs one section and installs only that section's tool, so a
+# section that runs another's check, or demands another's tool, reddens a job
+# for a reason that job never names. The stubs keep this to milliseconds
+# instead of a real scan of the whole history.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+
+stubs="$(mktemp -d)"
+trap 'rm -rf "$stubs"' EXIT
+
+out="$stubs/check-output"
+failed=0
+
+# Linked rather than found on PATH: the PATH below leaves out the directory
+# the real tools live in, which is also where a newer bash usually lives.
+ln -s "$BASH" "$stubs/bash"
+
+stub() {
+  local tool
+  for tool in "$@"; do
+    printf '#!/bin/sh\nexit 0\n' >"$stubs/$tool"
+    chmod +x "$stubs/$tool"
+  done
+}
+
+run_check() {
+  local status=0
+  PATH="$stubs:/usr/bin:/bin" "$repo_root/bin/check" "$@" >"$out" 2>&1 || status=$?
+  printf '%s\n' "$status" >"$stubs/status"
+}
+
+exited() {
+  grep -qx "$1" "$stubs/status"
+}
+
+assert() {
+  local label="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    printf '  pass  %s\n' "$label"
+  else
+    printf '  FAIL  %s\n' "$label"
+    sed 's/^/        /' "$out"
+    failed=1
+  fi
+}
+
+refute() {
+  local label="$1"
+  shift
+  if "$@" >/dev/null 2>&1; then
+    printf '  FAIL  %s\n' "$label"
+    sed 's/^/        /' "$out"
+    failed=1
+  else
+    printf '  pass  %s\n' "$label"
+  fi
+}
+
+stub gitleaks actionlint shellcheck python3 jq
+
+run_check skills
+assert 'a named section passes' exited 0
+assert 'a named section runs' grep -q '^==> check-skills' "$out"
+refute 'a named section runs nothing else' grep -q '^==> gitleaks' "$out"
+
+run_check skils
+refute 'an unknown section fails' exited 0
+assert 'an unknown section lists the real ones' grep -q 'secrets workflows shell skills link' "$out"
+refute 'an unknown section runs nothing' grep -q '^==>' "$out"
+
+# The skills job installs no gitleaks, so the skills section must not ask.
+rm "$stubs/gitleaks"
+run_check skills
+assert "a section runs without another section's tool" exited 0
+
+# actionlint because it is never in /usr/bin, where python3 and jq can be.
+rm "$stubs/actionlint"
+run_check secrets
+assert "a section still requires its own tool" exited 127
+assert 'a missing tool is named' grep -q 'brew install gitleaks' "$out"
+refute "a missing tool is the only one named" grep -q 'brew install actionlint' "$out"
+
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi

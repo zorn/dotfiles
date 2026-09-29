@@ -20,9 +20,9 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 ## CI
 
-`bin/check` is the single entry point; `ci.yml` installs the tools and runs it. **Add a check by editing `bin/check`** — never by inlining it into a workflow, and never as a separate workflow either. Both make local and CI drift apart.
+`bin/check` is the single entry point; each `ci.yml` job installs one section's tool and runs `bin/check <section>`. **Add a check by editing `bin/check`** — never by inlining it into a workflow, and never as a separate workflow either. Both make local and CI drift apart.
 
-- **Do not rename the `gitleaks` job.** Its id is the required-status-check context on the `protect-main` ruleset, so renaming silently un-requires it. It runs more than gitleaks now.
+- **Each job name in `ci.yml` is a required-status-check context on the `protect-main` ruleset.** Renaming a job silently un-requires it, and a new section's job is not required until the ruleset lists it. Change the ruleset in the same breath.
 - The ruleset lives in repo settings, so nothing here enforces it and it can be switched off without leaving a diff. Verify rather than trust: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[].type'`.
 - Tool pins in `ci.yml` are a version plus a tarball checksum, and **Dependabot cannot see them** — no ecosystem tracks a curl'd release, and the checksum is not what hides them. Bumping is manual; move the checksum with the version, from that release's `<tool>_<version>_checksums.txt`.
 - **`shellcheck`, `python3` and `jq` are unpinned on purpose** — unlike gitleaks and actionlint, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.

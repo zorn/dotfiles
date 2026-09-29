@@ -10,11 +10,14 @@ permissions:
   contents: read
 
 jobs:
-  # Named `gitleaks` because that is the context name on the protect-main
-  # ruleset; renaming the job silently un-requires the check. It runs
-  # bin/check, which is now more than gitleaks alone.
-  gitleaks:
-    name: gitleaks
+  # One job per bin/check section, so the pull request page names the check
+  # that failed rather than one tick for everything. Each job name is a
+  # required-status-check context on the protect-main ruleset: renaming or
+  # adding a job means updating the ruleset too, or the check silently stops
+  # being required. Each job runs its section of bin/check, never the check
+  # itself inlined, so there is still one definition of "green".
+  secrets:
+    name: secrets
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -42,10 +45,20 @@ jobs:
           tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/gitleaks" gitleaks
           echo "$RUNNER_TEMP/gitleaks" >> "$GITHUB_PATH"
 
-      # Same treatment, same reasoning — a pinned version and a verified
-      # checksum, from the release's actionlint_<version>_checksums.txt.
-      # The runner already has shellcheck, which actionlint picks up off PATH
-      # to lint the `run:` block above.
+      - name: Run checks
+        run: ./bin/check secrets
+
+  workflows:
+    name: workflows
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # Pinned the same way as gitleaks in the secrets job, for the same
+      # reason — a verified checksum, from the release's
+      # actionlint_<version>_checksums.txt. The runner already has
+      # shellcheck, which actionlint picks up off PATH to lint `run:` blocks.
       - name: Install actionlint
         env:
           ACTIONLINT_VERSION: 1.7.12
@@ -60,7 +73,34 @@ jobs:
           tar -xzf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/actionlint" actionlint
           echo "$RUNNER_TEMP/actionlint" >> "$GITHUB_PATH"
 
-      # The same entry point that runs locally, so there is one definition of
-      # "green" rather than a CI copy that drifts from the local one.
       - name: Run checks
-        run: ./bin/check
+        run: ./bin/check workflows
+
+  # shellcheck, python3 and jq come with the runner image, so these three
+  # jobs install nothing.
+  shell:
+    name: shell
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run checks
+        run: ./bin/check shell
+
+  skills:
+    name: skills
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run checks
+        run: ./bin/check skills
+
+  link:
+    name: link
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - name: Run checks
+        run: ./bin/check link
