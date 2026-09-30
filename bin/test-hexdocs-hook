@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# Feed claude/hooks/hexdocs-subdomain.sh the JSON Claude Code sends before a
+# WebFetch, and check the URL it hands back.
+#
+# A wrong rewrite fails quietly: the fetch lands on a 404 or a different
+# package, and the agent reads that as the docs saying so. Each shape of
+# hexdocs URL gets a case here rather than a one-time manual check.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+hook="$repo_root/claude/hooks/hexdocs-subdomain.sh"
+
+failed=0
+
+# The URL the fetch will actually use: the rewritten one if the hook returned
+# updatedInput, otherwise the original.
+fetched_url() {
+  local url="$1" input output
+  input="$(jq -n --arg url "$url" \
+    '{hook_event_name: "PreToolUse", tool_name: "WebFetch",
+      tool_input: {url: $url, prompt: "Summarize the page"}}')"
+  output="$(printf '%s' "$input" | "$hook")"
+  if [ -z "$output" ]; then
+    printf '%s\n' "$url"
+  else
+    printf '%s' "$output" | jq -r '.hookSpecificOutput.updatedInput.url'
+  fi
+}
+
+expect() {
+  local label="$1" url="$2" want="$3" got
+  got="$(fetched_url "$url" 2>&1)" || got="hook failed: $got"
+  if [ "$got" = "$want" ]; then
+    printf '  pass  %s\n' "$label"
+  else
+    printf '  FAIL  %s\n        want %s\n        got  %s\n' "$label" "$want" "$got"
+    failed=1
+  fi
+}
+
+expect 'a path URL moves to the package subdomain' \
+  'https://hexdocs.pm/phoenix/telemetry.html' \
+  'https://phoenix.hexdocs.pm/telemetry.html'
+
+# Expected values below are the Location headers hexdocs.pm itself returned.
+expect 'an underscore in the package name becomes a hyphen' \
+  'https://hexdocs.pm/prom_ex/readme.html' \
+  'https://prom-ex.hexdocs.pm/readme.html'
+expect 'a version segment is kept' \
+  'https://hexdocs.pm/prom_ex/1.9.0/readme.html' \
+  'https://prom-ex.hexdocs.pm/1.9.0/readme.html'
+expect 'the standard library moves the same way' \
+  'https://hexdocs.pm/elixir/Enum.html' \
+  'https://elixir.hexdocs.pm/Enum.html'
+expect 'a bare package moves to its subdomain root' \
+  'https://hexdocs.pm/phoenix' \
+  'https://phoenix.hexdocs.pm/'
+expect 'a query string is kept' \
+  'https://hexdocs.pm/phoenix/telemetry.html?x=1' \
+  'https://phoenix.hexdocs.pm/telemetry.html?x=1'
+
+# hexdocs.pm answers these itself, with no redirect.
+expect 'the search page is left alone' \
+  'https://hexdocs.pm/?q=ecto' \
+  'https://hexdocs.pm/?q=ecto'
+expect 'the home page is left alone' \
+  'https://hexdocs.pm/' \
+  'https://hexdocs.pm/'
+expect 'a subdomain URL is left alone' \
+  'https://ecto.hexdocs.pm/Ecto.Repo.html' \
+  'https://ecto.hexdocs.pm/Ecto.Repo.html'
+expect 'another site is left alone' \
+  'https://example.com/phoenix/telemetry.html' \
+  'https://example.com/phoenix/telemetry.html'
+
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi

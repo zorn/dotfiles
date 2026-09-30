@@ -28,6 +28,8 @@
 #                beginning with the tool's own name parses as a shellcheck
 #                directive.) It also runs bin/test-check. That script checks
 #                that each section runs alone and asks only for its own tool.
+#                Then bin/test-hexdocs-hook, because a wrong URL rewrite sends
+#                every Elixir doc fetch to the wrong page without an error.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -103,7 +105,8 @@ selected shell && require shellcheck 'brew install shellcheck' \
 selected skills && require python3 'brew install python' \
   'https://www.python.org/downloads/'
 # bin/link builds ~/.claude/settings.json with jq, so bin/test-link needs it.
-selected link && require jq 'brew install jq' \
+# The hexdocs hook parses its input with jq, so its test does too.
+{ selected shell || selected link; } && require jq 'brew install jq' \
   'https://jqlang.org/download/'
 
 [ "$missing" -eq 0 ] || exit 127
@@ -170,6 +173,9 @@ check_shell() {
 
   printf '\n==> test-check: section selection\n'
   ./bin/test-check
+
+  printf '\n==> test-hexdocs-hook: WebFetch URL rewrite\n'
+  ./bin/test-hexdocs-hook
 }
 
 check_skills() {
@@ -203,6 +209,8 @@ advise() {
       printf 'A shellcheck finding means a script in the repo is wrong — fix it\n' >&2
       printf 'before something runs it. A test-check failure means a CI job\n' >&2
       printf 'would run the wrong section, or ask for a tool it never installed.\n' >&2
+      printf 'A test-hexdocs-hook failure means Elixir doc fetches would land on\n' >&2
+      printf 'the wrong URL.\n' >&2
       ;;
     skills)
       printf 'A check-skills finding means a skill would not load, or would load\n' >&2

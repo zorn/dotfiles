@@ -39,6 +39,15 @@ run_link
 assert 'a fresh HOME gets a built file' grep -q '^  built    settings.json' "$out"
 assert 'the build carries tracked keys' jq -e '.statusLine.command' "$settings"
 
+# A hook command that names a missing file fails on every WebFetch, so check
+# that each one resolves to an executable after the link.
+hook_commands="$(jq -r '.hooks.PreToolUse[]?.hooks[]?.command' "$settings")"
+assert 'the build registers a PreToolUse hook' test -n "$hook_commands"
+while IFS= read -r command; do
+  [ -n "$command" ] || continue
+  assert "hook resolves: $command" test -x "${command/#\~/$home}"
+done <<<"$hook_commands"
+
 run_link
 assert 'an unchanged file reports ok' grep -q '^  ok       settings.json' "$out"
 
