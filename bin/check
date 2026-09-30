@@ -28,14 +28,16 @@
 #                beginning with the tool's own name parses as a shellcheck
 #                directive.) It also runs bin/test-check. That script checks
 #                that each section runs alone and asks only for its own tool.
-#                Then bin/test-hexdocs-hook, because a wrong URL rewrite sends
-#                every Elixir doc fetch to the wrong page without an error.
+#                It then runs bin/test-hexdocs-hook, because a wrong URL
+#                rewrite sends every Elixir doc fetch to the wrong page
+#                without an error.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
 #   link       — bin/test-link, which runs bin/link against a throwaway HOME.
 #                The settings build must never overwrite a change made in
 #                Claude Code's UI, and nothing else would notice if it did.
+#                Each hook it registers must also resolve to a linked script.
 
 set -euo pipefail
 
@@ -218,7 +220,8 @@ advise() {
       ;;
     link)
       printf 'A test-link failure means bin/link could overwrite a change made in\n' >&2
-      printf "Claude Code's UI. Fix bin/link before running it on a real HOME.\n" >&2
+      printf "Claude Code's UI, or register a hook with no script behind it.\n" >&2
+      printf 'Fix bin/link before running it on a real HOME.\n' >&2
       ;;
   esac
   printf '\n' >&2

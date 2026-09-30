@@ -131,9 +131,9 @@ link_path "$repo_root/claude/keybindings.json" \
   "$HOME/.claude/keybindings.json" 'keybindings.json'
 link_path "$repo_root/claude/statusline-command.sh" \
   "$HOME/.claude/statusline-command.sh" 'statusline-command.sh'
-# The scripts settings.json registers as hooks. Claude Code writes nothing in
+# settings.json registers these scripts as hooks. Claude Code writes nothing in
 # ~/.claude/hooks, so the whole directory can be a link.
-link_path "$repo_root/claude/hooks" "$HOME/.claude/hooks" 'claude/hooks'
+link_path "$repo_root/claude/hooks" "$HOME/.claude/hooks" 'hooks'
 
 # worktrunk's global config and the hook scripts it calls. Link the file, not
 # ~/.config/worktrunk itself: worktrunk writes approvals.toml there, and that

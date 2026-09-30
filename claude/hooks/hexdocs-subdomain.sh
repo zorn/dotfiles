@@ -3,16 +3,16 @@
 # PreToolUse hook for WebFetch: rewrite https://hexdocs.pm/<package>/... to
 # https://<package>.hexdocs.pm/... before the request goes out.
 #
-# hexdocs.pm 301s the path form to the subdomain, and the path form is what
-# training data holds, so every doc lookup would otherwise cost a wasted fetch.
+# hexdocs.pm 301s the path form to the subdomain. Training data holds the path
+# form, so every doc lookup would otherwise waste a fetch.
 
 set -euo pipefail
 
 input="$(cat)"
 url="$(printf '%s' "$input" | jq -r '.tool_input.url // empty')"
 
-# Only Hex package-name characters, so the root search page (/?q=...) is not
-# mistaken for a package.
+# Match only Hex package-name characters, so the search page (/?q=...) never
+# matches as a package.
 if [[ "$url" =~ ^https?://hexdocs\.pm/([a-z0-9_]+)(/.*)?$ ]]; then
   # A hostname cannot hold an underscore, so hexdocs swaps in a hyphen.
   package="${BASH_REMATCH[1]//_/-}"

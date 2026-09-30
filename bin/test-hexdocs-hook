@@ -4,7 +4,7 @@
 # WebFetch, and check the URL it hands back.
 #
 # A wrong rewrite fails quietly: the fetch lands on a 404 or a different
-# package, and the agent reads that as the docs saying so. Each shape of
+# package, and the agent takes the wrong page as the real docs. Each shape of
 # hexdocs URL gets a case here rather than a one-time manual check.
 
 set -euo pipefail
@@ -14,18 +14,20 @@ hook="$repo_root/claude/hooks/hexdocs-subdomain.sh"
 
 failed=0
 
-# The URL the fetch will actually use: the rewritten one if the hook returned
-# updatedInput, otherwise the original.
+# Empty output means the hook left the URL alone. A non-zero exit blocks the
+# fetch, so it fails the case even when the URL was meant to pass through.
 fetched_url() {
   local url="$1" input output
   input="$(jq -n --arg url "$url" \
     '{hook_event_name: "PreToolUse", tool_name: "WebFetch",
       tool_input: {url: $url, prompt: "Summarize the page"}}')"
-  output="$(printf '%s' "$input" | "$hook")"
+  output="$(printf '%s' "$input" | "$hook")" || return 1
   if [ -z "$output" ]; then
     printf '%s\n' "$url"
   else
-    printf '%s' "$output" | jq -r '.hookSpecificOutput.updatedInput.url'
+    # updatedInput replaces the whole input, so a dropped prompt breaks the fetch.
+    printf '%s' "$output" | jq -r '.hookSpecificOutput.updatedInput |
+      if .prompt == "Summarize the page" then .url else "prompt dropped" end'
   fi
 }
 
@@ -40,11 +42,13 @@ expect() {
   fi
 }
 
+# Expected rewrites are the Location headers hexdocs.pm itself returned.
 expect 'a path URL moves to the package subdomain' \
   'https://hexdocs.pm/phoenix/telemetry.html' \
   'https://phoenix.hexdocs.pm/telemetry.html'
-
-# Expected values below are the Location headers hexdocs.pm itself returned.
+expect 'an http URL moves to the https subdomain' \
+  'http://hexdocs.pm/phoenix/telemetry.html' \
+  'https://phoenix.hexdocs.pm/telemetry.html'
 expect 'an underscore in the package name becomes a hyphen' \
   'https://hexdocs.pm/prom_ex/readme.html' \
   'https://prom-ex.hexdocs.pm/readme.html'
@@ -61,7 +65,7 @@ expect 'a query string is kept' \
   'https://hexdocs.pm/phoenix/telemetry.html?x=1' \
   'https://phoenix.hexdocs.pm/telemetry.html?x=1'
 
-# hexdocs.pm answers these itself, with no redirect.
+# The hook leaves these URLs alone.
 expect 'the search page is left alone' \
   'https://hexdocs.pm/?q=ecto' \
   'https://hexdocs.pm/?q=ecto'

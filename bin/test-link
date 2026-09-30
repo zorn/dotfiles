@@ -5,7 +5,8 @@
 #
 # The build exists so that a change made in Claude Code's UI is never
 # overwritten. A regression there loses that change without a word, so each
-# outcome gets a case here rather than a one-time manual check.
+# outcome gets a case here rather than a one-time manual check. It also checks
+# that every hook the build registers resolves to a linked script.
 
 set -euo pipefail
 
