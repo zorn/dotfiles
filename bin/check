@@ -173,11 +173,15 @@ check_shell() {
     printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"
   fi
 
+  # Called from a || list, so set -e is off here: each test's status is kept
+  # by hand, or only the last one would count.
+  local failed=0
   printf '\n==> test-check: section selection\n'
-  ./bin/test-check
+  ./bin/test-check || failed=1
 
   printf '\n==> test-hexdocs-hook: WebFetch URL rewrite\n'
-  ./bin/test-hexdocs-hook
+  ./bin/test-hexdocs-hook || failed=1
+  return "$failed"
 }
 
 check_skills() {
