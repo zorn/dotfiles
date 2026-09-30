@@ -16,14 +16,14 @@ The user has asked you to teach them something. This is a stateful request - the
 
 ## Teaching Workspace
 
-The teaching workspace is the directory the user invoked you from. It is never this skill's own directory: the format files linked below sit next to this `SKILL.md` and are read-only templates. Every workspace path below is relative to the workspace root, so `lessons/` means `<workspace>/lessons/`. If you are unsure which directory is the workspace, ask before writing anything.
+The teaching workspace is the directory the user invoked you from. It is never this skill's own directory. The format files linked below sit next to this `SKILL.md` and are read-only templates. Every workspace path below is relative to the workspace root, so `lessons/` means `<workspace>/lessons/`. If you are unsure which directory is the workspace, ask before writing anything.
 
-The state of their learning is captured in the workspace in several files:
+The workspace holds their learning state in several files:
 
 - `MISSION.md`: A document capturing the _reason_ the user is interested in the topic. This should be used to ground all teaching. Use the format in [MISSION-FORMAT.md](MISSION-FORMAT.md).
-- `reference/*.html`: A directory of reference materials. These are the compressed learnings from the lessons - cheat sheets, reference algorithms, syntax, yoga poses. They are the raw units of learning. They should be beautiful documents which print out well, and are designed for quick reference.
+- `reference/*.html`: A directory of reference documents. These are the compressed learnings from the lessons - cheat sheets, reference algorithms, syntax, yoga poses. They are the raw units of learning. They should be beautiful documents which print out well, and are designed for quick reference.
 - `RESOURCES.md`: A list of resources which can be explored to ground your teaching in contextual knowledge, or to acquire knowledge and wisdom. Use the format in [RESOURCES-FORMAT.md](RESOURCES-FORMAT.md).
-- `learning-records/*.md`: A directory of learning records, which capture what the user has learned. These are loosely equivalent to architectural decision records in software development - they capture non-obvious lessons and key insights that may need to be revised later, or drive future sessions. These should be used to calculate the zone of proximal development. They are titled `0001-<dash-case-name>.md`, where the number increments each time. Use the format in [LEARNING-RECORD-FORMAT.md](LEARNING-RECORD-FORMAT.md).
+- `learning-records/*.md`: A directory of learning records, which capture what the user has learned. These are loosely equivalent to architectural decision records in software development - they capture non-obvious lessons and key insights that may need to be revised later, or drive future sessions. These should be used to calculate the zone of proximal development. Use the format in [LEARNING-RECORD-FORMAT.md](LEARNING-RECORD-FORMAT.md).
 - `GLOSSARY.md`: The canonical terminology for the topic, holding only terms the user already understands. Use the format in [GLOSSARY-FORMAT.md](GLOSSARY-FORMAT.md).
 - `lessons/*.html`: A directory of lessons. A **lesson** is a single, self-contained HTML output that teaches one tightly-scoped thing tied to the mission. This is the primary unit of teaching in this workspace.
 - `assets/*`: Reusable **components** shared across lessons. See [Assets](#assets).
@@ -34,7 +34,7 @@ The state of their learning is captured in the workspace in several files:
 To learn at a deep level, the user needs three things:
 
 - **Knowledge**, captured from high-quality, high-trust resources
-- **Skills**, acquired through highly-relevant interactive lessons devised by you, based on the knowledge
+- **Skills**, acquired through highly relevant interactive lessons devised by you, based on the knowledge
 - **Wisdom**, which comes from interacting with other learners and practitioners
 
 Before the `RESOURCES.md` is well-populated, your focus should be to find high-quality resources which will help the user acquire knowledge. Never trust your parametric knowledge.
@@ -66,9 +66,9 @@ If possible, open the lesson file for the user by running a CLI command.
 
 Each lesson should link via HTML anchors to other lessons and reference documents.
 
-Each lesson should recommend a primary source for the user to read or watch. This should be the most high-quality, high-trust resource you found on the topic.
+Each lesson should recommend a primary source for the user to read or watch. This should be the highest-quality, highest-trust resource you found on the topic.
 
-Each lesson should contain a reminder to ask followup questions to the agent. The agent is their teacher, and can assist with anything that's unclear.
+Each lesson should contain a reminder to ask follow-up questions to the agent. The agent is their teacher, and can assist with anything that's unclear.
 
 ## Assets
 
@@ -90,17 +90,17 @@ Missions may change as the user develops more skills and knowledge. This is norm
 
 ### Starting Point
 
-Once the mission is set, establish what the user already knows before the first lesson. Ask about their prior knowledge of the topic and of adjacent topics, and about the gaps they are aware of. Record each answer as a learning record, with the depth they claim. In session one there are no other learning records, so without this step the first lessons guess at the user's level and use terms they have never met.
+Once the mission is set, establish what the user already knows before the first lesson. Ask about their prior knowledge of the topic and of adjacent topics, and about the gaps they are aware of. Record each piece of prior knowledge as a learning record, with the depth they claim, and note the known gaps in `NOTES.md`. Session one has no other learning records. Without this step, the first lessons guess at the user's level and use terms the user has never met.
 
 ## Zone Of Proximal Development
 
-Each lesson, the user should always feel as if they are being challenged 'just enough'.
+In each lesson, the user should feel challenged 'just enough'.
 
 The user may specify an exact thing they want to learn. If they don't, figure out their zone of proximal development by:
 
 - Reading their `learning-records`
 - Figuring out the right thing to teach them based on their mission
-- Teach the most relevant thing that fits in their zone of proximal development
+- Teaching the most relevant thing that fits in their zone of proximal development
 
 ## Knowledge
 
@@ -123,7 +123,7 @@ Each of these should be based on a **feedback loop**, where the user receives fe
 
 For quizzes, each answer should be exactly the same number of words (and characters, if possible). Don't give the user any clues about the answer through formatting.
 
-The quiz component in `assets/` must shuffle the answer order each time it renders. An instruction to vary the position does not stop the correct answer from landing in the first slot, so the component enforces the order and not the lesson text.
+The quiz component in `assets/` must shuffle the answer order each time it renders. An instruction to vary the position does not stop the correct answer from landing in the first slot, so the component does the shuffling, not the lesson text.
 
 ## Acquiring Wisdom
 
@@ -147,10 +147,10 @@ Some learning topics lend themselves to reference:
 - Algorithms and flowcharts for processes
 - Yoga poses and sequences for yoga
 - Exercises and routines for fitness
-- Glossaries for any topic with its own nomenclature
+- A glossary for any topic with its own nomenclature, kept in `GLOSSARY.md` rather than in `reference/`
 
-Glossaries, in particular, are an essential reference. Keep the glossary in `GLOSSARY.md`, in the format in [GLOSSARY-FORMAT.md](GLOSSARY-FORMAT.md). Once it exists, every lesson must use its terms.
+Glossaries, in particular, are an essential reference. Keep the glossary in `GLOSSARY.md`, using the format in [GLOSSARY-FORMAT.md](GLOSSARY-FORMAT.md). Once it exists, every lesson must use its terms.
 
 ## `NOTES.md`
 
-The user will sometimes express preferences of how they want to be taught, or things you should keep in mind. This is the place to record those preferences, so you can refer back to them when designing lessons or working with the user.
+The user will sometimes express preferences about how they want to be taught, or things you should keep in mind. This is the place to record those preferences, so you can refer back to them when designing lessons or working with the user.
