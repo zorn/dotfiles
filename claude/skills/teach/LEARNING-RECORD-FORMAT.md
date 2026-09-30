@@ -18,7 +18,7 @@ That is the whole format. A learning record can be a single paragraph. The value
 
 Only include these when they add genuine value. Most records won't need them.
 
-- **Status** frontmatter (`active | superseded by LR-NNNN`): useful when an earlier understanding turns out to be wrong and is replaced.
+- **Status** frontmatter (`active | superseded by NNNN-slug.md`): useful when an earlier understanding turns out to be wrong and is replaced.
 - **Evidence**: how the user demonstrated the understanding (a question answered, an exercise completed, prior experience cited). Useful when the claim might be revisited.
 - **Implications**: what this unlocks or rules out for future sessions. Worth recording when non-obvious.
 
@@ -43,4 +43,4 @@ Write one when any of these is true:
 
 ## Supersession
 
-When a later record contradicts an earlier one (the user's understanding deepened or corrected), mark the old record `Status: superseded by LR-NNNN` rather than deleting it. The history of how understanding evolved is itself useful signal.
+When a later record contradicts an earlier one (the user's understanding deepened or corrected), mark the old record `Status: superseded by NNNN-slug.md` rather than deleting it. The history of how understanding evolved is itself useful signal.
