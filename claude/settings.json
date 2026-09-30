@@ -16,12 +16,26 @@
       "effortLevel": "medium"
     }
   },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "WebFetch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "~/.claude/hooks/hexdocs-subdomain.sh"
+          }
+        ]
+      }
+    ]
+  },
   "permissions": {
     "additionalDirectories": [
       "/Users/zorn/ProjectRepos/notebook/Library"
     ],
     "allow": [
       "WebFetch(domain:hexdocs.pm)",
+      "WebFetch(domain:*.hexdocs.pm)",
       "Bash(/Applications/Google Chrome.app/Contents/MacOS/Google Chrome --headless=new --screenshot=*)"
     ],
     "defaultMode": "auto",

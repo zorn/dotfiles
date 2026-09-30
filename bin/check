@@ -28,12 +28,16 @@
 #                beginning with the tool's own name parses as a shellcheck
 #                directive.) It also runs bin/test-check. That script checks
 #                that each section runs alone and asks only for its own tool.
+#                It then runs bin/test-hexdocs-hook, because a wrong URL
+#                rewrite sends every Elixir doc fetch to the wrong page
+#                without an error.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
 #   link       — bin/test-link, which runs bin/link against a throwaway HOME.
 #                The settings build must never overwrite a change made in
 #                Claude Code's UI, and nothing else would notice if it did.
+#                Each hook it registers must also resolve to a linked script.
 
 set -euo pipefail
 
@@ -103,7 +107,8 @@ selected shell && require shellcheck 'brew install shellcheck' \
 selected skills && require python3 'brew install python' \
   'https://www.python.org/downloads/'
 # bin/link builds ~/.claude/settings.json with jq, so bin/test-link needs it.
-selected link && require jq 'brew install jq' \
+# The hexdocs hook parses its input with jq, so its test does too.
+{ selected shell || selected link; } && require jq 'brew install jq' \
   'https://jqlang.org/download/'
 
 [ "$missing" -eq 0 ] || exit 127
@@ -168,8 +173,15 @@ check_shell() {
     printf 'No problems found in %d scripts.\n' "${#shell_scripts[@]}"
   fi
 
+  # Called from a || list, so set -e is off here: each test's status is kept
+  # by hand, or only the last one would count.
+  local failed=0
   printf '\n==> test-check: section selection\n'
-  ./bin/test-check
+  ./bin/test-check || failed=1
+
+  printf '\n==> test-hexdocs-hook: WebFetch URL rewrite\n'
+  ./bin/test-hexdocs-hook || failed=1
+  return "$failed"
 }
 
 check_skills() {
@@ -203,6 +215,8 @@ advise() {
       printf 'A shellcheck finding means a script in the repo is wrong — fix it\n' >&2
       printf 'before something runs it. A test-check failure means a CI job\n' >&2
       printf 'would run the wrong section, or ask for a tool it never installed.\n' >&2
+      printf 'A test-hexdocs-hook failure means Elixir doc fetches would land on\n' >&2
+      printf 'the wrong URL.\n' >&2
       ;;
     skills)
       printf 'A check-skills finding means a skill would not load, or would load\n' >&2
@@ -210,7 +224,8 @@ advise() {
       ;;
     link)
       printf 'A test-link failure means bin/link could overwrite a change made in\n' >&2
-      printf "Claude Code's UI. Fix bin/link before running it on a real HOME.\n" >&2
+      printf "Claude Code's UI, or register a hook with no script behind it.\n" >&2
+      printf 'Fix bin/link before running it on a real HOME.\n' >&2
       ;;
   esac
   printf '\n' >&2

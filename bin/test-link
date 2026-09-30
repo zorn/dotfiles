@@ -5,7 +5,8 @@
 #
 # The build exists so that a change made in Claude Code's UI is never
 # overwritten. A regression there loses that change without a word, so each
-# outcome gets a case here rather than a one-time manual check.
+# outcome gets a case here rather than a one-time manual check. It also checks
+# that every hook the build registers resolves to a linked script.
 
 set -euo pipefail
 
@@ -38,6 +39,15 @@ assert() {
 run_link
 assert 'a fresh HOME gets a built file' grep -q '^  built    settings.json' "$out"
 assert 'the build carries tracked keys' jq -e '.statusLine.command' "$settings"
+
+# A hook command that names a missing file fails on every WebFetch, so check
+# that each one resolves to an executable after the link.
+hook_commands="$(jq -r '.hooks.PreToolUse[]?.hooks[]?.command' "$settings")"
+assert 'the build registers a PreToolUse hook' test -n "$hook_commands"
+while IFS= read -r command; do
+  [ -n "$command" ] || continue
+  assert "hook resolves: $command" test -x "${command/#\~/$home}"
+done <<<"$hook_commands"
 
 run_link
 assert 'an unchanged file reports ok' grep -q '^  ok       settings.json' "$out"
