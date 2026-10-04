@@ -1,6 +1,6 @@
 ---
 name: adr
-description: Record an architecture decision as a numbered document in docs/adr/. Use when a real trade-off has been settled and is worth writing down, when a new decision amends or overturns an earlier one, or when another skill needs a decision recorded. Reading an existing decision is not this skill.
+description: Record an architecture decision as a numbered document in docs/adr/. Use when a real trade-off has been settled and is worth writing down, when a new decision amends or overturns an earlier one, when editing an existing ADR file directly, or when another skill needs a decision recorded. Reading an existing decision is not this skill.
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
