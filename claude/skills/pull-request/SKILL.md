@@ -39,7 +39,7 @@ Alternatives you considered belong here as a headline and a link to where they w
 
 ## 3. Show it working
 
-For a behavior change, give the reviewer both a way to see it and a picture of it.
+Every flavor gets a picture when it has a shape to show. A behavior change gets a demo path and a screenshot; a change with nothing to screenshot gets a sketch.
 
 **The demo path** costs nothing and goes stale slower than an image. Take the port from the project's config and the route from the router's own generated list (`mix phx.routes` in a Phoenix app) rather than reading the router by eye, then say what to click. Where the repo already documents how to inspect a running app, link that document rather than restating it.
 
