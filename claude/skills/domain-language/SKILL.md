@@ -1,6 +1,6 @@
 ---
 name: domain-language
-description: Build and sharpen a project's ubiquitous language. Use when the user wants to pin down domain terminology, name a concept, settle what a word means in this project, or resolve a fuzzy or overloaded term — and when another skill needs the project's vocabulary kept current.
+description: Build and sharpen a project's ubiquitous language. Use when the user wants to pin down domain terminology, name a concept, settle what a word means in this project, or resolve a fuzzy or overloaded term; when the project's ubiquitous-language file (`UBIQUITOUS_LANGUAGE.md` or `docs/ubiquitous_language.md`) is written or edited directly; and when another skill needs the project's vocabulary kept current.
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills

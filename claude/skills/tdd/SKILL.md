@@ -30,6 +30,8 @@ See [tests.md](reference/tests.md) for examples and [mocking.md](reference/mocki
 
 Ask: "What's the public interface, and which seams should we test?"
 
+When the shape of that interface is itself the open question — how deep the module is, where the seam belongs, what the interface should expose — load `codebase-design` before confirming any seam. Consult it as a reference rather than running a design session.
+
 Which seam is highest depends on what the project already has, not on what would be nicest — see [the ladder in tests.md](reference/tests.md). Never add a testing dependency to reach a better seam.
 
 ## Anti-patterns
