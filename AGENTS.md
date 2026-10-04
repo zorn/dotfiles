@@ -7,7 +7,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 `bin/link` mirrors `claude/` into `~/.claude/`: each `claude/skills/<name>/` directory into `~/.claude/skills/`, and `claude/CLAUDE.md`, `claude/keybindings.json`, `claude/statusline-command.sh` and the `claude/hooks/` directory to the same names in `~/.claude/`. It builds `~/.claude/settings.json` from `claude/settings.json` rather than linking it. It also links `worktrunk/config.toml` and `worktrunk/hooks/` into `~/.config/worktrunk/`, links `fish/config.fish` into `~/.config/fish/`, links `git/config` and `git/ignore` into `~/.config/git/`, links `zed/settings.json` into `~/.config/zed/`, links `asdf/tool-versions` to `~/.tool-versions` and `zsh/zprofile` and `zsh/zshenv` to `~/.zprofile` and `~/.zshenv`, and sets `core.hooksPath` to `githooks/`.
 
 - **Edits to a linked file are live.** It is the same inode the agent loads — never "reinstall" after editing, just edit.
-- **Adding a skill means re-running `bin/link`.** Adding a file inside an already-linked skill does not.
+- **Adding a skill means re-running `bin/link`.** Adding a file inside an already-linked skill does not. The README describes the skills as a set, so a new skill needs no README edit.
 - It prints `SKIP` rather than clobbering a real file at the destination. Add a category by calling `link_path` again, not by writing a second installer. `build_settings` is the one exception, because `settings.json` cannot be a link.
 - **Never link `~/.config/worktrunk/` itself — only the files and `hooks/` inside it.** worktrunk writes `approvals.toml` there, and a linked directory would put that machine state in this repo.
 - **Link only `fish/config.fish`, never `~/.config/fish/` or its subdirectories.** Fish writes `fish_variables` there and installers write generated functions and completions, so a linked directory would put them in the repo. Add a `link_path` for a `conf.d/` or `functions/` file only when it is hand-written.
@@ -34,7 +34,7 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 - **Adding a rule means adding a case to `CASES`.** `bin/check` runs `--self-test` before the real pass, because a validator that cannot fail reports every skill as fine — the same silent pass it exists to prevent.
 - **Its frontmatter parser is a deliberate YAML subset, not PyYAML**, and rejects some valid YAML on purpose. Double-quoting the value is the escape hatch; do not widen the parser to accept a one-off.
-- **An unrecognised frontmatter field is allowed** — clients define their own, and Claude Code does. Only a near-miss of a spec field is reported, because that is a typo rather than an extension.
+- **An unrecognized frontmatter field is allowed** — clients define their own, and Claude Code does. Only a near-miss of a spec field is reported, because that is a typo rather than an extension.
 
 ## Deliberate choices that could look like mistakes
 

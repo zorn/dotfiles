@@ -84,7 +84,7 @@ gh pr create --title "<title>" --body-file <path> --attach <scratch>/before.png 
 
 A failed attachment still creates the PR and prints its URL, but `gh` exits non-zero. Recover with `gh pr edit <n> --body-file <path>` and every `--attach` again, since the original body file still holds the local paths.
 
-Then confirm the link took: `gh pr view --json closingIssuesReferences` comes back non-empty whenever you used a closing keyword.
+Then confirm the link took: `gh pr view --json closingIssuesReferences` comes back non-empty whenever you used a closing keyword. GitHub can take a few seconds to fill it, so check once more before treating an empty result as a broken link.
 
 Opening the PR triggers an automatic Copilot review here, so comments arrive within a minute or two and the work is not done when the PR exists. `implement` step 6 owns that loop and its script; when this skill ran outside `implement`, say the review is coming and pick up the same loop rather than reporting the PR as finished.
 

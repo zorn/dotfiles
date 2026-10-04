@@ -57,13 +57,7 @@ Memory is the exception: it lives in `~/.claude/projects/<slug>/memory/`, and it
 
 ### 5. Present the candidates
 
-Present the candidates as a numbered decision list, most severe first. Severity is the cost to future runs: a repeated struggle outranks a one-off, and a mistake that shipped outranks one that got caught. Each one leads with a colored verdict and its claim in a single line:
-
-- 🔴 **Fix** — build it.
-- 🟡 **Weigh** — a genuine coin flip; state both sides. It defaults to Keep if the user does not mention it.
-- ⚪ **Keep** — a struggle you surfaced but would not change the environment for.
-
-Under the claim, cite the moment it came from, its scope, and the concrete change. End by saying that anything the user does not mention stands as recommended.
+Present the candidates as a decision list in the global instructions' format, most severe first. Severity is the cost to future runs: a repeated struggle outranks a one-off, and a mistake that shipped outranks one that got caught. A Keep is a struggle you surfaced but would not change the environment for. Under each claim, cite the moment it came from, its scope, and the concrete change.
 
 The run ends at the list. The user's reply decides which candidates get built.
 

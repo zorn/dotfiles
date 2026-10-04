@@ -176,7 +176,7 @@ _Avoid_: home, canonical location
 
 ### Duplication
 
-_Failure mode._ The same meaning given more than one **single source of truth**. It costs maintenance (change one place, you must change the others), costs tokens, and inflates prominence — repeating a meaning weights it on the ladder past its real rank. The accidental inverse of a **leading word**, which raises attention on purpose by repeating a token, never the meaning.
+_Failure mode._ The same meaning given more than one **single source of truth**. It costs maintenance (change one place, you must change the others), costs tokens, and inflates prominence — repeating a meaning weights it on the ladder past its real rank. The accidental inverse of a **leading word**, which raises attention on purpose by repeating a token, never the meaning. Curing it means picking which copy survives, and the copy promoted can be the wrong one: check which version is true before deleting the other, or the merge turns a visible contradiction into a silent wrong answer.
 
 _Avoid_: repetition, redundancy
 
