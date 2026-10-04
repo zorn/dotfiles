@@ -31,13 +31,11 @@ Then, when the repo has a `render.yaml`, **decide whether the change deploys**. 
 Four moves, in order. Name each heading after its own content — `Three findings that change the shape of #147`, `What changes in a browser` — rather than reaching for `Summary` or `What changed`.
 
 1. **Open with what this is and where it sits.** One or two sentences under no heading: the change, and the arc it belongs to. Link the issue or PR it follows from, and say what it leaves for later.
-2. **Disclose the risk.** Say whether the merge is a one-way or a two-way door, and name its blast radius. A two-way door rolls back cheaply; a one-way door — a migration that drops data, a published interface, a destructive action — does not. The blast radius is what could break, and for whom. Then say what did *not* change and what the suite says — "No production behavior changes here; the suite is unchanged at 327 passing." Keep it to a sentence or two: it is what a reviewer leans on to decide how hard to look. A skipped deploy goes here too — "Skips the Render deploy: nothing here reaches the running app" — so the reviewer can overturn it.
+2. **Disclose the risk.** Say whether the merge is a one-way or a two-way door, and name its blast radius. A two-way door rolls back cheaply; a one-way door — a migration that drops data, a published interface, a destructive action — does not. The blast radius is what could break, and for whom. Then say what did *not* change and what the suite says — "No production behavior changes here; the suite is unchanged at 327 passing." Keep the disclosure short: it is what a reviewer leans on to decide how hard to look. A skipped deploy goes here too — "Skips the Render deploy: nothing here reaches the running app" — so the reviewer can overturn it.
 3. **Carry the substance under content-named headings.** Lead each with a claim rather than a topic. Cite `path:line` for anything the reviewer would otherwise go hunting for, and link it when the file lives in this repo.
 4. **End with `Worth a reviewer's attention`.** Bold-led bullets, one per judgment call the reviewer might overturn — a skipped lint rule, a deviation from what the issue specified, a trade-off you picked a side on. This is the section that earns the review; write it even when the list has one item.
 
 Alternatives you considered belong here as a headline and a link to where they were argued. The reader who wants the full case follows the link; everyone else needs the sentence.
-
-A change with nothing to screenshot still gets a picture: the smallest sketch that makes its point, placed beside the sentence it supports. Use a call tree for control flow, a shallow file tree for a layout change, a Mermaid diagram for data flowing between components, and a `diff` over any of these when the point is what moved. Keep only the calls, files and boundaries the point needs.
 
 ## 3. Show it working
 
@@ -64,6 +62,8 @@ Stack the pair vertically rather than side by side — two half-width images mak
 **A screen recording** earns its place when the change is an interaction rather than a state — a drag, a transition, a multi-step flow. Save it as mp4, mov, or webm and put the bare reference on a paragraph of its own, `![](<scratch>/demo.mp4)`, which GitHub renders as an inline player. Video takes no alt text, so say what it shows in the sentence above it. Size limits are in [reference/images.md](reference/images.md).
 
 **A runtime transcript** earns its place when the change's value is a return shape or an edge case that reads better as a session than as a test name. Compose it from `mix run -e` output against seeded fixtures. Piping into `iex -S mix` prints the prompt and the result with the input missing — `iex(1)> 2` for an input of `1 + 1` — so the transcript it produces misrepresents what was typed.
+
+**A sketch** is the picture for a change with nothing to screenshot — a refactor, a new control flow, a file reshuffle — whatever its flavor. Use the smallest one that makes the point, placed beside the sentence it supports: a call tree for control flow, a shallow file tree for a layout change, a Mermaid diagram for data flowing between components, or a `diff` of any of these when the point is what moved. Keep only the calls, files and boundaries the point needs.
 
 ## 4. Check, then open
 

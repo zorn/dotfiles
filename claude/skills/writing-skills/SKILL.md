@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Reference for writing and editing skills — and any other document an agent reads, such as AGENTS.md, CLAUDE.md or a doc behind a pointer — with the vocabulary and principles that make it predictable.
+description: Reference for writing skills and other documents agents read, with the vocabulary and principles that make them predictable.
 license: MIT
 disable-model-invocation: true
 metadata:
@@ -9,14 +9,14 @@ metadata:
   forked-on: "2026-08-03"
   upstream-copyright: Copyright (c) 2026 Matt Pocock, MIT
   editor: Mike Zornek
-  note: forked from the pre-rename writing-great-skills; upstream became writing-for-agents on 2026-07-23, and its cache principle is ported
+  note: forked from the pre-rename writing-great-skills; upstream became writing-for-agents on 2026-07-23, and its cache principle was ported
 ---
 
 A skill exists to wrangle determinism out of a stochastic system. **Predictability** — the agent taking the same _process_ every run, not producing the same output — is the root virtue; every lever below serves it.
 
 **Bold terms** are defined in [`reference/glossary.md`](reference/glossary.md), and every definition lives there rather than here. What follows is the order to apply them in.
 
-The same levers govern every document an agent reads: an `AGENTS.md` or `CLAUDE.md`, or a doc reached by a pointer. Only Frontmatter, Invocation and Writing the description are specific to skills.
+The same levers govern every document an agent reads: an `AGENTS.md` or `CLAUDE.md`, or a doc reached by a pointer. Only Frontmatter, Invocation, Writing the description, and splitting by invocation under When to split are specific to skills.
 
 ## Reviewing an existing skill
 
@@ -81,7 +81,7 @@ In order, cheapest first:
 1. **Relevance** — does the line still bear on what the skill does?
 2. **No-ops** — sentence by sentence, not line by line. Run the test on each sentence in isolation, and when one fails delete the whole sentence rather than trimming words from it. Be aggressive: most prose that fails should go, not be rewritten.
 3. **Duplication** — keep each meaning in a **single source of truth**, so changing the behavior is a one-place edit.
-4. **Cache** — the environment is a source of truth too. Keep only what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses.
+4. **Cache** — does the line restate what the agent could find by looking at the environment?
 
 ## Leading words
 

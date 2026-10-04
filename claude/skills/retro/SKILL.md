@@ -12,15 +12,17 @@ metadata:
   editor: Mike Zornek
 ---
 
-The user has asked for a **retrospective**. You are proposing improvements to the coding agent's **environment** — the files, checks, tools, and steering it works inside — so that future runs go better. You change nothing yourself: the retrospective ends at a list of candidates, and the user builds the ones they pick as ordinary work afterwards.
+The user has asked for a **retrospective**. You are proposing improvements to the coding agent's **environment** — the files, checks, tools, and steering it works inside — so that future runs go better. You change nothing yourself: the retrospective ends at a list of candidates, and the user builds the ones they pick as ordinary work afterward.
 
 ## Steps
 
 ### 1. Read the session
 
-The **primary session** is the current one, unless the user names another. Session logs live in `~/.claude/projects/<slug>/<session-id>.jsonl`, where `<slug>` is the project's absolute path with every `/` replaced by `-`.
+The **primary session** is the current one, unless the user names another. Session logs live in `~/.claude/projects/<slug>/<session-id>.jsonl`, where `<slug>` is the project's absolute path with every character that is not a letter or digit replaced by `-`.
 
 Find the moments the agent struggled: it hunted a long time for a file or fact, made a mistake a tool could have caught, slipped a mistake past review, made an expensive tool call for little return, lacked information it had no way to reach, or was corrected by the user.
+
+The step is done when every struggle is listed with the moment it happened.
 
 ### 2. Scan recent sessions for repeats
 
@@ -36,11 +38,11 @@ Look for candidates in these categories. Every candidate must point back to a sp
 
 - **Navigation**: how easy was it for the agent to find the right files? Are there hidden dependencies between files? Would a **navigation pointer** make it easier? _Use when_ the session took a long time to find a piece of information.
 - **Automated checks**: are there automated checks that could catch errors the agent made? Linting, typing, tests, filesystem linters? Read the repo's own check command first (its build-tool `lint`/`check` scripts, its CI workflow), so a check that already exists but sits unwired or silently broken is the finding, not a reinvention. A repo with no **guardrail** (no pre-commit hook and no CI job running its lint/typecheck/test command) is itself a finding: an un-linted repo is a standing missed opportunity, not a neutral default. _Use when_ the agent made a mistake an automated check could have caught, or the repo has no guardrail at all.
-- **Coding standards**: should the reviewer — `diff-review`, whose Standards axis reads the repo's documented standards — be given a new rule to enforce? Should an existing rule be removed or clarified? Classify the violation first. A **mechanical** one (a fixed syntactic pattern, a banned API, an import shape, a file-location rule) gets a deterministic check, full stop: a custom rule in the repo's own linter, a new pre-commit hook, or a new CI job, whichever the repo's language and existing guardrail make cheapest. Default to building the check over writing the rule. Reserve `CODING_STANDARDS.md` for genuine **judgment calls** (cross-file consistency, "matches the surrounding style," anything no guardrail could ever substitute for). _Use when_ the reviewer failed to catch a mistake.
+- **Coding standards**: should the reviewer — `diff-review`, whose Standards axis reads the repo's documented standards — be given a new rule to enforce? Should an existing rule be removed or clarified? Classify the violation first. A **mechanical** one (a fixed syntactic pattern, a banned API, an import shape, a file-location rule) gets a deterministic check: a custom rule in the repo's own linter, a new pre-commit hook, or a new CI job, whichever the repo's language and existing guardrail make cheapest. Reserve `CODING_STANDARDS.md` for genuine **judgment calls** (cross-file consistency, "matches the surrounding style," anything no guardrail could ever substitute for). _Use when_ the reviewer failed to catch a mistake.
 - **Steering files**: `AGENTS.md`/`CLAUDE.md` (the repo's, and the global `~/.claude/CLAUDE.md`) and the auto-memory index `MEMORY.md` all load into every session. Are there instructions in them that should move to coding standards, a check, or a skill? Are there **no-ops** — lines that do not change the agent's behavior? Is a memory being recorded again and again? A feedback memory that keeps returning is a rule the environment has not absorbed; propose the skill edit or check that would make it unnecessary. _Use when_ a steering file is large, or a memory recurs.
 - **Skills**: did a skill mislead the agent, omit a step it needed, or fail to trigger? Was there a repeated procedure that no skill covers? _Use when_ the agent followed a skill into a mistake, or improvised a process it has improvised before.
 - **Tool economy**: did the agent make expensive tool calls that could be streamlined? Is there any custom tooling (CLIs, MCPs) that is particularly token-inefficient? _Use when_ the agent made an expensive tool call.
-- **Information access**: look for opportunities to increase the agent's access to information. Teeing dev server logs, read-only access to third-party services. _Use when_ a crucial piece of information was not available to the agent.
+- **Information access**: look for opportunities to increase the agent's access to information. For example, tee the dev server log to a file the agent can read, or give it read-only access to a third-party service. _Use when_ a crucial piece of information was not available to the agent.
 
 ### 4. Route each candidate to its scope
 
@@ -53,9 +55,15 @@ Memory is the exception: it lives in `~/.claude/projects/<slug>/memory/`, and it
 
 ### 5. Present the candidates
 
-Present the candidates as the global instructions require any decision list to be presented, most severe first. Each one leads with its verdict and its claim in a single line — Fix (build it), Weigh (a genuine coin flip, both sides stated), or Keep (a struggle you surfaced but would not change the environment for) — and then cites the moment it came from, its scope, and the concrete change.
+Present the candidates as a numbered decision list, most severe first. Each one leads with a colored verdict and its claim in a single line:
 
-Then stop. Do not build any candidate until the user picks it.
+- 🔴 **Fix** — build it.
+- 🟡 **Weigh** — a genuine coin flip; state both sides. It defaults to Keep if the user does not mention it.
+- ⚪ **Keep** — a struggle you surfaced but would not change the environment for.
+
+Under the claim, cite the moment it came from, its scope, and the concrete change. End by saying that anything the user does not mention stands as recommended.
+
+The run ends at the list. The user's reply decides which candidates get built.
 
 ## Reference
 
@@ -65,7 +73,7 @@ All work goes through two stages: implementation (`implement`, `tdd`) and review
 
 The review agent has the least context pressure — it receives a diff, so no exploration is needed. It often does not need to write code or debug.
 
-This means that the review agent should be responsible for imposing coding standards, not the implementation agent.
+So the review agent imposes coding standards, not the implementation agent.
 
 ### Files
 

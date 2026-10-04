@@ -182,7 +182,7 @@ _Avoid_: repetition, redundancy
 
 ### Cache
 
-_Failure mode._ A document that restates the environment — `package.json` scripts, config files, the directory layout, `--help` output. The environment is a **single source of truth** too, so the restatement is a copy of a lookup: it costs load on every read and goes stale silently when the environment changes. It earns its place only when the lookup is expensive. Cache what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses. Leave the one-file, one-command lookups to the environment. **Duplication** repeats a meaning between documents; a cache repeats one between a document and the environment.
+_Failure mode._ A document that restates the environment — `package.json` scripts, config files, the directory layout, `--help` output. The environment is a **single source of truth** too, so the restatement is a copy of a lookup: it costs load on every read and goes stale silently when the environment changes. It earns its place only when the lookup is expensive. Write down only what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses. Leave the one-file, one-command lookups to the environment. **Duplication** repeats a meaning between documents; a cache repeats one between a document and the environment.
 
 _Avoid_: mirror, restatement
 
