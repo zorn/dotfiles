@@ -21,7 +21,9 @@ the value is the escape hatch for anything this parser will not take.
 Beyond the spec it checks what breaks skills in this repo specifically:
 relative links that do not resolve, links that leave the skill directory (each
 skill is symlinked into ~/.claude/skills on its own, so `../` lands nowhere),
-and Python under scripts/ that does not compile.
+Python under scripts/ that does not compile, and British spellings in skill
+prose — the repo writes US English, and copy ported from upstream arrives
+British, which review only catches one word at a time.
 
 Usage:
     bin/check-skills                  # check claude/skills
@@ -41,7 +43,7 @@ from urllib.parse import unquote
 
 SPEC_URL = "https://agentskills.io/specification"
 
-# The fields the spec defines. An unrecognised field is not an error — clients
+# The fields the spec defines. An unrecognized field is not an error — clients
 # are expected to add their own, and Claude Code does — but one that is nearly
 # a spec field is a typo, and a typo in a field name is silent: the field it
 # was meant to be simply goes missing.
@@ -57,6 +59,24 @@ CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
 REF_LINK_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*<?([^>\s]+)>?", re.M)
 SCHEME_RE = re.compile(r"^[a-zA-Z][a-zA-Z0-9+.-]*:")
+
+# British forms that copy ported from upstream keeps bringing in. A list, not a
+# rule: a blanket `-ise` pattern would flag rise, promise, and otherwise. Text
+# in backticks is skipped, which is the escape hatch for a quotation or an
+# identifier that keeps its own spelling.
+BRITISH_RE = re.compile(
+    r"\b(?:"
+    r"(?:organi|recogni|normali|prioriti|summari|minimi|maximi|reali|optimi|initiali|"
+    r"seriali|customi|standardi|categori|utili|speciali|apologi|memori|visuali|"
+    r"authori|finali)s(?:e|ed|es|ing|ation|ations|er|ers)"
+    r"|analys(?:e|ed|es|ing)"
+    r"|(?:behavio|colo|favo|hono|labo|neighbo)ur(?:s|ed|ing|al|able)?"
+    r"|judgements?|defence|licence|programmes?|catalogues?|centres?"
+    r"|travell(?:ed|ing)|cancell(?:ed|ing)|modell(?:ed|ing)|labell(?:ed|ing)"
+    r"|afterwards|whilst|amongst|learnt|spelt"
+    r")\b",
+    re.I,
+)
 
 # Characters that mean something structural to YAML at the start of a plain
 # scalar, so a value beginning with one is not the string it looks like.
@@ -282,6 +302,20 @@ def check_links(skill_dir: Path, fail) -> None:
                 fail(f"{where} links to `{target}`, which does not exist")
 
 
+def check_spelling(skill_dir: Path, fail) -> None:
+    for markdown in sorted(skill_dir.rglob("*.md")):
+        where = markdown.relative_to(skill_dir)
+        body = strip_code(markdown.read_text(encoding="utf-8"))
+        for number, line in enumerate(body.splitlines(), start=1):
+            if line.lstrip().startswith(">"):
+                continue
+            for match in BRITISH_RE.finditer(line):
+                fail(
+                    f"{where}:{number} spells `{match.group(0)}` the British way — "
+                    "write the US form, or put it in backticks if it is quoted or an identifier"
+                )
+
+
 def check_scripts(skill_dir: Path, fail) -> None:
     for script in sorted(skill_dir.rglob("*.py")):
         with tempfile.TemporaryDirectory() as scratch:
@@ -313,6 +347,7 @@ def check_skill(skill_dir: Path) -> list[str]:
         check_fields(fields, skill_dir, fail)
 
     check_links(skill_dir, fail)
+    check_spelling(skill_dir, fail)
     check_scripts(skill_dir, fail)
     return problems
 
@@ -418,6 +453,16 @@ CASES = [
             "scripts/tool.py": "def (\n",
         },
         ["does not compile"],
+    ),
+    (
+        "british",
+        {"SKILL.md": "---\nname: british\ndescription: A thing.\n---\n\nNormalise the behaviour afterwards.\n"},
+        ["`Normalise`", "`behaviour`", "`afterwards`"],
+    ),
+    (
+        "british-quoted",
+        {"SKILL.md": "---\nname: british-quoted\ndescription: A thing.\n---\n\nThe `behaviour` key.\n\n> Upstream says behaviour.\n\nOtherwise, promise to rise.\n"},
+        [],
     ),
     ("empty", {"README.md": "not a skill\n"}, ["no SKILL.md"]),
 ]

@@ -67,7 +67,7 @@ Monitor(
 
 The script polls until told to stop, so running it in the foreground buys nothing and burns the whole tool timeout while showing you nothing. `Monitor` turns each new item into a notification that arrives while you keep working; `WATCH_SETTLE=1` lets the watch end itself once checks are done and the review has landed, rather than sitting armed until timeout.
 
-It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is cancelled — so a crashed job does not read as silence. It remembers what it has already reported, so nothing is announced twice, which also means a second run against the same PR is silent until you delete its state file. Progress goes to stderr, so `Read` the monitor's output file to see elapsed time and the check rollup without waiting for an event.
+It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is canceled — so a crashed job does not read as silence. It remembers what it has already reported, so nothing is announced twice, which also means a second run against the same PR is silent until you delete its state file. Progress goes to stderr, so `Read` the monitor's output file to see elapsed time and the check rollup without waiting for an event.
 
 **Evaluate every comment before acting on it. Copilot is a reviewer, not an authority** — it does not know this repo's conventions and has been confidently wrong about them. Declining a comment is a legitimate outcome; ignoring one is not.
 
