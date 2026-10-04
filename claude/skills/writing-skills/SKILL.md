@@ -1,6 +1,6 @@
 ---
 name: writing-skills
-description: Reference for writing and editing skills well — the vocabulary and principles that make a skill predictable.
+description: Reference for writing and editing skills — and any other document an agent reads, such as AGENTS.md, CLAUDE.md or a doc behind a pointer — with the vocabulary and principles that make it predictable.
 license: MIT
 disable-model-invocation: true
 metadata:
@@ -9,18 +9,21 @@ metadata:
   forked-on: "2026-08-03"
   upstream-copyright: Copyright (c) 2026 Matt Pocock, MIT
   editor: Mike Zornek
+  note: forked from the pre-rename writing-great-skills; upstream became writing-for-agents on 2026-07-23, and its cache principle is ported
 ---
 
 A skill exists to wrangle determinism out of a stochastic system. **Predictability** — the agent taking the same _process_ every run, not producing the same output — is the root virtue; every lever below serves it.
 
 **Bold terms** are defined in [`reference/glossary.md`](reference/glossary.md), and every definition lives there rather than here. What follows is the order to apply them in.
 
+The same levers govern every document an agent reads: an `AGENTS.md` or `CLAUDE.md`, or a doc reached by a pointer. Only Frontmatter, Invocation and Writing the description are specific to skills.
+
 ## Reviewing an existing skill
 
 Work outward from the always-loaded material:
 
 1. **The description**, and whether the skill should be **model-invoked** or **user-invoked** at all. It is the only part loaded every turn, so it earns the hardest pruning.
-2. **Prune the body** — **relevance**, then **no-ops**, then **duplication**, in that order.
+2. **Prune the body** — **relevance**, then **no-ops**, then **duplication**, then **cache**, in that order.
 3. **Check the ladder** — is anything sitting in `SKILL.md` that belongs behind a **context pointer**, and does every **step** end on a **completion criterion** the agent can check?
 4. **Check every failure mode** listed at the end of this file against the skill.
 
@@ -78,6 +81,7 @@ In order, cheapest first:
 1. **Relevance** — does the line still bear on what the skill does?
 2. **No-ops** — sentence by sentence, not line by line. Run the test on each sentence in isolation, and when one fails delete the whole sentence rather than trimming words from it. Be aggressive: most prose that fails should go, not be rewritten.
 3. **Duplication** — keep each meaning in a **single source of truth**, so changing the behavior is a one-place edit.
+4. **Cache** — the environment is a source of truth too. Keep only what the agent cannot find by looking: the unwritten convention, the reason behind a choice, the gotcha no config confesses.
 
 ## Leading words
 
@@ -93,5 +97,6 @@ Check each one against the skill under review, reading its glossary entry rather
 - **Duplication**
 - **Sediment**
 - **Sprawl**
+- **Cache**
 - **No-op**
 - **Negation**
