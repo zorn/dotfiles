@@ -45,6 +45,8 @@ Number every item, and lead each one with its claim in a single line. Supporting
 
 Give each item your recommended action and a one-line reason. A list of options with "what do you think?" costs me more than it costs you — you have read the code, so make the call and let me overturn it. Where you genuinely have no preference, say so plainly instead of manufacturing a recommendation; "no objection" must not ratify a call you were not confident making.
 
+Lead each item with a colored verdict, so my eye lands on what needs a call and skims the rest: 🔴 **Fix** to change it, 🟡 **Weigh** for a genuine coin flip with both sides stated, and ⚪ **Keep** to leave it as it is, with the reason. A Weigh I do not mention stays Keep, because leaving it is the reversible choice.
+
 Say at the end that anything I do not mention stands as recommended, and then honor it. The point is that I can accept eight of ten and spend my attention on the two that are wrong.
 
 ## US English

@@ -70,7 +70,7 @@ Anything the repo documents about how prose should read — a `STYLE.md`, a writ
 
 The baseline has two concerns:
 
-- **Register and grammar** — across every comment, doc comment, and Markdown doc the diff touches: flag grammar errors, awkward phrasing, and British spellings (behaviour → behavior). Leave identifiers and quoted material alone; changing those breaks a reference rather than tidying it.
+- **Register and grammar** — across every comment, doc comment, and Markdown doc the diff touches: flag grammar errors, awkward phrasing, and British spellings (`behaviour` → behavior). Leave identifiers and quoted material alone; changing those breaks a reference rather than tidying it.
 - **Length is the default suspect** — challenge every function doc and inline comment: can it be shorter, or deleted? A comment earns its bytes only by carrying the *why*; one that restates what the code plainly does is noise, and the fix is to delete it, not trim it. Split multi-clause comment sentences in the spirit of ASD-STE100 — one idea per sentence, active voice. This concern is for code-level copy, so do not shorten a Markdown doc that is deliberately thorough.
 
 Boundary with Standards: a murky function *name* is Standards (Mysterious Name); a verbose *sentence* in its doc is Prose.

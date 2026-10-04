@@ -48,7 +48,7 @@ _Avoid_: token cost, context bloat
 
 ### Cognitive Load
 
-The cost a **user-invoked** skill imposes on the human — what they must hold in their head: which skills exist and when to reach for each (the human is the index). What **model-invocation** removes by being agent-discoverable, and the brake on splitting into more user-invoked skills. Not a cost to minimize: it is the price of human agency, the reason some skills stay user-invoked. Spend it where human judgement matters; remove it where it does not.
+The cost a **user-invoked** skill imposes on the human — what they must hold in their head: which skills exist and when to reach for each (the human is the index). What **model-invocation** removes by being agent-discoverable, and the brake on splitting into more user-invoked skills. Not a cost to minimize: it is the price of human agency, the reason some skills stay user-invoked. Spend it where human judgment matters; remove it where it does not.
 
 _Avoid_: human index, burden, overhead
 
@@ -176,7 +176,7 @@ _Avoid_: home, canonical location
 
 ### Duplication
 
-_Failure mode._ The same meaning given more than one **single source of truth**. It costs maintenance (change one place, you must change the others), costs tokens, and inflates prominence — repeating a meaning weights it on the ladder past its real rank. The accidental inverse of a **leading word**, which raises attention on purpose by repeating a token, never the meaning.
+_Failure mode._ The same meaning given more than one **single source of truth**. It costs maintenance (change one place, you must change the others), costs tokens, and inflates prominence — repeating a meaning weights it on the ladder past its real rank. The accidental inverse of a **leading word**, which raises attention on purpose by repeating a token, never the meaning. Curing it means picking which copy survives, and the copy promoted can be the wrong one: check which version is true before deleting the other, or the merge turns a visible contradiction into a silent wrong answer.
 
 _Avoid_: repetition, redundancy
 

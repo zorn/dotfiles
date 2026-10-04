@@ -18,7 +18,7 @@ Start there. Reach for a fake only when the real thing cannot run in a test, and
 
 ## How to fake, when you must
 
-Elixir's answer is a **behaviour plus a config-swapped implementation**, not a mocking library. The seam is a module name resolved at runtime:
+Elixir's answer is a **`behaviour` plus a config-swapped implementation**, not a mocking library. The seam is a module name resolved at runtime:
 
 ```elixir
 # lib/my_app/mailer.ex
@@ -34,7 +34,7 @@ config :my_app, :mailer, MyApp.Mailer.Fake
 
 Callers go through `MyApp.Mailer.impl().deliver(email)`, and test config supplies a fake that records what it was handed. Two things make the indirection worth it:
 
-- **The fake is a real module**, so it compiles, can be read on its own, and cannot drift from the behaviour without the compiler saying so.
+- **The fake is a real module**, so it compiles, can be read on its own, and cannot drift from the `behaviour` without the compiler saying so.
 - **The swap is one line of config**, so no test has to know it happened.
 
 A fake that sends messages to the test process — `send(self(), {:delivered, email})`, asserted with `assert_received` — beats one that counts calls. It checks the observable outcome instead of the interaction.
