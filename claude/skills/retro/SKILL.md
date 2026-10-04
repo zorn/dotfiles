@@ -26,7 +26,7 @@ The step is done when every struggle is listed with the moment it happened.
 
 ### 2. Scan recent sessions for repeats
 
-Dispatch one sub-agent to read the **five most recent other sessions** in the same `~/.claude/projects/<slug>/` directory. A number in the arguments overrides the count. The sub-agent reads the raw logs so you do not — they are large, and only the patterns matter here.
+Dispatch one sub-agent to read the **five most recent other sessions of the same repo**. A number in the arguments overrides the count. Each worktree gets its own `~/.claude/projects/<slug>/` directory, so the repo's sessions are spread across several. Give the sub-agent the repo's `git rev-parse --git-common-dir`, and have it keep a session only when `git -C <cwd> rev-parse --git-common-dir` matches, where `<cwd>` is the `cwd` field the session's log records. A worktree that has since been removed fails that check, so match on its recorded path instead. The sub-agent reads the raw logs so you do not — they are large, and only the patterns matter here.
 
 Give it the list of struggles from step 1, and the brief: "For each struggle, report the sessions where the same struggle recurs, citing the session id and what happened in one line. Then report any other struggle that recurs in two or more of these sessions. Report only struggles that recur."
 
