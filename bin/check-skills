@@ -70,13 +70,16 @@ BRITISH_RE = re.compile(
     r"seriali|customi|standardi|categori|utili|speciali|apologi|memori|visuali|"
     r"authori|finali)s(?:e|ed|es|ing|ation|ations|er|ers)"
     r"|analys(?:e|ed|es|ing)"
-    r"|(?:behavio|colo|favo|hono|labo|neighbo)ur(?:s|ed|ing|al|able)?"
+    r"|(?:behavio|colo|favo|flavo|hono|humo|labo|neighbo|rumo|endeavo|savo|vapo)ur(?:s|ed|ing|al|able)?"
     r"|judgements?|defence|licence|programmes?|catalogues?|centres?"
     r"|travell(?:ed|ing)|cancell(?:ed|ing)|modell(?:ed|ing)|labell(?:ed|ing)"
     r"|afterwards|whilst|amongst|learnt|spelt"
     r")\b",
     re.I,
 )
+
+# A link target or bare URL is someone else's spelling, not prose.
+URL_RE = re.compile(r"\]\([^)]*\)|<[a-z][a-z0-9+.-]*:[^>]*>|\b[a-z][a-z0-9+.-]*://\S+", re.I)
 
 # Characters that mean something structural to YAML at the start of a plain
 # scalar, so a value beginning with one is not the string it looks like.
@@ -309,7 +312,7 @@ def check_spelling(skill_dir: Path, fail) -> None:
         for number, line in enumerate(body.splitlines(), start=1):
             if line.lstrip().startswith(">"):
                 continue
-            for match in BRITISH_RE.finditer(line):
+            for match in BRITISH_RE.finditer(URL_RE.sub(" ", line)):
                 fail(
                     f"{where}:{number} spells `{match.group(0)}` the British way — "
                     "write the US form, or put it in backticks if it is quoted or an identifier"
@@ -456,12 +459,12 @@ CASES = [
     ),
     (
         "british",
-        {"SKILL.md": "---\nname: british\ndescription: A thing.\n---\n\nNormalise the behaviour afterwards.\n"},
-        ["`Normalise`", "`behaviour`", "`afterwards`"],
+        {"SKILL.md": "---\nname: british\ndescription: A thing.\n---\n\nNormalise the behaviour afterwards, whatever its flavour.\n"},
+        ["`Normalise`", "`behaviour`", "`afterwards`", "`flavour`"],
     ),
     (
         "british-quoted",
-        {"SKILL.md": "---\nname: british-quoted\ndescription: A thing.\n---\n\nThe `behaviour` key.\n\n> Upstream says behaviour.\n\nOtherwise, promise to rise.\n"},
+        {"SKILL.md": "---\nname: british-quoted\ndescription: A thing.\n---\n\nThe `behaviour` key.\n\n> Upstream says behaviour.\n\nOtherwise, promise to rise.\n\nSee [the guide](https://example.com/behaviour) or https://example.com/colour.\n"},
         [],
     ),
     ("empty", {"README.md": "not a skill\n"}, ["no SKILL.md"]),
