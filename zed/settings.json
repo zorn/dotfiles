@@ -20,6 +20,13 @@
   },
   "show_edit_predictions": false,
   "terminal": {
+    "shell": {
+      "with_arguments": {
+        "program": "/opt/homebrew/bin/fish",
+        "args": [],
+        "title_override": null
+      }
+    },
     "dock": "bottom",
   },
   "edit_predictions": {
