@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+#
+# Ask fish_should_add_to_history in fish/config.fish whether it would save
+# each command below, and check its answer.
+#
+# A filter that misses fails quietly: the secret lands in fish_history and
+# stays there. Each shape of secret gets a case here, and so does each
+# harmless command that looks like one.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+config="$repo_root/fish/config.fish"
+
+# config.fish sources local.fish from the config directory. Pointing that
+# directory at an empty one means a test run never loads a real secret.
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+
+failed=0
+
+# Prints "saved" or "skipped". The command line goes in as an argument,
+# never as fish source, so a case cannot run anything.
+verdict() {
+  # shellcheck disable=SC2016 # $argv is fish's, not ours to expand.
+  XDG_CONFIG_HOME="$scratch" fish --no-config -c '
+    source $argv[1]
+    if fish_should_add_to_history $argv[2]
+        echo saved
+    else
+        echo skipped
+    end' "$config" "$1"
+}
+
+expect() {
+  local want="$1" command="$2" got
+  got="$(verdict "$command" 2>&1)" || got="fish failed: $got"
+  if [ "$got" = "$want" ]; then
+    printf '  pass  %-7s %s\n' "$want" "$command"
+  else
+    printf '  FAIL  %-7s %s\n        got %s\n' "$want" "$command" "$got"
+    failed=1
+  fi
+}
+
+# Every value below is made up.
+
+# Fish's own rule, which the function has to keep.
+expect skipped ' psql -h db.example.com'
+expect skipped '	echo tab-led'
+
+# Secrets passed inline.
+expect skipped 'PGPASSWORD=hunter2 psql -h db.example.com'
+expect skipped 'GITHUB_TOKEN=abc123 gh pr list'
+expect skipped 'export AWS_SECRET_ACCESS_KEY=abc123'
+expect skipped 'SECRET_KEY_BASE=abc123 mix phx.server'
+expect skipped 'set -gx GITHUB_TOKEN abc123'
+expect skipped 'set -x OPENAI_API_KEY abc123'
+expect skipped 'exercism configure --token=abc123'
+expect skipped 'exercism configure --token abc123'
+expect skipped 'curl "https://example.com/v3/search?part=id&key=abc123"'
+expect skipped 'curl "https://example.com/feed?access_token=abc123"'
+expect skipped 'psql postgres://app:hunter2@db.example.com/app'
+expect skipped 'echo first
+PGPASSWORD=hunter2 psql'
+
+# Harmless commands that mention the same words.
+expect saved 'psql -h db.example.com'
+# shellcheck disable=SC2016 # A literal $ is the point of this case.
+expect saved 'echo $GITHUB_TOKEN'
+expect saved 'git log --grep=token'
+expect saved 'mix phx.gen.secret'
+expect saved 'curl "https://example.com/search?q=fish"'
+expect saved 'git clone https://github.com/zorn/dotfiles.git'
+expect saved 'psql postgres://app@db.example.com/app'
+expect saved 'set -gx EDITOR zed'
+
+if [ "$failed" -ne 0 ]; then
+  exit 1
+fi

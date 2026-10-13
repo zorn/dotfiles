@@ -70,12 +70,13 @@ refute() {
   fi
 }
 
-stub betterleaks actionlint shellcheck python3 jq
+stub betterleaks actionlint shellcheck python3 jq fish
 
 # Exit status is not asserted: bin/test-link fails against a stub jq, and
-# which sections ran is the point here.
+# bin/test-fish-history against a stub fish. Which sections ran is the point
+# here.
 run_check
-for header in betterleaks actionlint shellcheck test-hexdocs-hook check-skills test-link; do
+for header in betterleaks actionlint shellcheck test-hexdocs-hook check-skills test-link test-fish-history; do
   assert "a bare run runs $header" grep -q "^==> $header" "$out"
 done
 
@@ -86,7 +87,7 @@ assert 'a named section runs' grep -q '^==> check-skills' "$out"
 
 run_check skils
 refute 'an unknown section fails' exited 0
-assert 'an unknown section lists the real ones' grep -q 'secrets workflows shell skills link' "$out"
+assert 'an unknown section lists the real ones' grep -q 'secrets workflows shell skills link fish' "$out"
 refute 'an unknown section runs nothing' grep -q '^==>' "$out"
 
 run_check skills skils

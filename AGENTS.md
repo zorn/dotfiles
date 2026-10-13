@@ -25,8 +25,8 @@ Mike Zornek's personal machine configuration, public so individual pieces can be
 
 - **Each job name in `ci.yml` is a required-status-check context on the `protect-main` ruleset.** Renaming a job silently un-requires it, and a new section's job is not required until the ruleset lists it. Update the ruleset before merging: once the pull request reports the new context, require it, then drop the old one.
 - The ruleset lives in repo settings, so nothing here enforces it and it can be switched off without leaving a diff. Verify rather than trust: `gh api repos/zorn/dotfiles/rules/branches/main --jq '.[] | select(.type == "required_status_checks") | .parameters.required_status_checks[].context'` should list every job in `ci.yml`.
-- Tool pins in `ci.yml` are a version plus a tarball checksum, and **Dependabot cannot see them** — no ecosystem tracks a curl'd release, and the checksum is not what hides them. Bumping is manual; move the checksum with the version, from that release's checksums file.
-- **`shellcheck`, `python3` and `jq` are unpinned on purpose** — unlike Betterleaks and actionlint, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.
+- Tool pins in `ci.yml` are a version plus a tarball checksum, and **Dependabot cannot see them** — no ecosystem tracks a curl'd release, and the checksum is not what hides them. Bumping is manual; move the checksum with the version, from that release's checksums file. fish publishes none, so its checksum is taken from the downloaded tarball.
+- **`shellcheck`, `python3` and `jq` are unpinned on purpose** — unlike Betterleaks, actionlint and fish, they come with the runner image rather than being installed by `ci.yml`, so a new skill check needs no workflow change at all.
 
 ## Skill validation
 
