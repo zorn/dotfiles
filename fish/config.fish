@@ -32,15 +32,18 @@ fish_add_path --path $HOME/.local/bin
 function fish_should_add_to_history
     string match -qr '^\s' -- $argv; and return 1
     # An assignment whose name holds a secret word: PGPASSWORD=,
-    # GITHUB_TOKEN=, AWS_SECRET_ACCESS_KEY=, and ?access_token= in a URL.
-    string match -qir '\w*(password|passwd|token|secret|api_?key)\w*=' -- $argv; and return 1
+    # GITHUB_TOKEN=, STRIPE_KEY=, and ?access_token= or &key= in a URL.
+    string match -qir '\w*(password|passwd|token|secret|key)\w*=' -- $argv; and return 1
     # The same names set the fish way: set -gx GITHUB_TOKEN ...
-    string match -qir '\bset\s+(-\S+\s+)*\w*(password|passwd|token|secret|api_?key)\w*\s+\S' -- $argv; and return 1
-    string match -qir -- '--(token|password|api-key)(=|\s)' $argv; and return 1
-    # A key in a URL query, and a password between the user name and the @
-    # in a URL.
-    string match -qir '[?&]\w*key=' -- $argv; and return 1
-    string match -qr '://[^/\s:@]+:[^/\s@]+@' -- $argv; and return 1
+    string match -qir '\bset\s+(-\S+\s+)*\w*(password|passwd|token|secret|key)\w*\s+\S' -- $argv; and return 1
+    # A flag that takes the secret as its next word: --access-token abc
+    string match -qir -- '--(\w+-)*(token|password|secret|key)\s' $argv; and return 1
+    # An HTTP auth header, and curl's -u user:password.
+    string match -qir '\b(authorization:|bearer\s)' -- $argv; and return 1
+    string match -qr '\s-u\s*[^\s:]+:\S' -- $argv; and return 1
+    # A password between the user name and the @ in a URL. Redis leaves the
+    # user name empty.
+    string match -qr '://[^/\s:@]*:[^/\s@]+@' -- $argv; and return 1
     return 0
 end
 

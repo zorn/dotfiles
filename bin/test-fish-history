@@ -18,29 +18,15 @@ scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 
 failed=0
+wants=()
+commands=()
 
-# Prints "saved" or "skipped". The command line goes in as an argument,
-# never as fish source, so a case cannot run anything.
-verdict() {
-  # shellcheck disable=SC2016 # $argv is fish's, not ours to expand.
-  XDG_CONFIG_HOME="$scratch" fish --no-config -c '
-    source $argv[1]
-    if fish_should_add_to_history $argv[2]
-        echo saved
-    else
-        echo skipped
-    end' "$config" "$1"
-}
-
+# Cases are collected here and judged together below, in one fish process.
+# Starting fish for each case would source config.fish, and run brew, every
+# time.
 expect() {
-  local want="$1" command="$2" got
-  got="$(verdict "$command" 2>&1)" || got="fish failed: $got"
-  if [ "$got" = "$want" ]; then
-    printf '  pass  %-7s %s\n' "$want" "$command"
-  else
-    printf '  FAIL  %-7s %s\n        got %s\n' "$want" "$command" "$got"
-    failed=1
-  fi
+  wants+=("$1")
+  commands+=("$2")
 }
 
 # Every value below is made up.
@@ -61,6 +47,14 @@ expect skipped 'exercism configure --token abc123'
 expect skipped 'curl "https://example.com/v3/search?part=id&key=abc123"'
 expect skipped 'curl "https://example.com/feed?access_token=abc123"'
 expect skipped 'psql postgres://app:hunter2@db.example.com/app'
+expect skipped 'redis-cli -u redis://:hunter2@localhost:6379' # betterleaks:allow
+expect skipped 'docker run -e REDIS_URL=redis://:hunter2@cache:6379 app' # betterleaks:allow
+expect skipped 'export STRIPE_KEY=abc123'
+expect skipped 'AWS_ACCESS_KEY_ID=abc123 aws s3 ls'
+expect skipped 'gh auth login --with-token abc123'
+expect skipped 'cli login --access-token abc123'
+expect skipped 'curl -H "Authorization: Bearer abc123" https://example.com'
+expect skipped 'curl -u admin:hunter2 https://example.com' # betterleaks:allow
 expect skipped 'echo first
 PGPASSWORD=hunter2 psql'
 
@@ -74,6 +68,39 @@ expect saved 'curl "https://example.com/search?q=fish"'
 expect saved 'git clone https://github.com/zorn/dotfiles.git'
 expect saved 'psql postgres://app@db.example.com/app'
 expect saved 'set -gx EDITOR zed'
+expect saved 'git push -u origin main'
+
+# Prints "saved" or "skipped" per case, in order. The command lines go in as
+# arguments, never as fish source, so a case cannot run anything.
+# shellcheck disable=SC2016 # $argv is fish's, not ours to expand.
+verdicts="$(XDG_CONFIG_HOME="$scratch" fish --no-config -c '
+  source $argv[1]
+  for command in $argv[2..]
+      if fish_should_add_to_history $command
+          echo saved
+      else
+          echo skipped
+      end
+  end' "$config" "${commands[@]}")" || {
+  printf '  FAIL  fish exited non-zero\n'
+  exit 1
+}
+
+i=0
+while IFS= read -r got; do
+  if [ "$got" = "${wants[$i]}" ]; then
+    printf '  pass  %-7s %s\n' "${wants[$i]}" "${commands[$i]}"
+  else
+    printf '  FAIL  %-7s %s\n        got %s\n' "${wants[$i]}" "${commands[$i]}" "$got"
+    failed=1
+  fi
+  i=$((i + 1))
+done <<<"$verdicts"
+
+if [ "$i" -ne "${#commands[@]}" ]; then
+  printf '  FAIL  %d cases, but fish judged %d\n' "${#commands[@]}" "$i"
+  failed=1
+fi
 
 if [ "$failed" -ne 0 ]; then
   exit 1
