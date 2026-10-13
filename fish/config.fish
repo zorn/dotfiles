@@ -38,9 +38,10 @@ function fish_should_add_to_history
     string match -qir '\bset\s+(-\S+\s+)*\w*(password|passwd|token|secret|key)\w*\s+\S' -- $argv; and return 1
     # A flag that takes the secret as its next word: --access-token abc
     string match -qir -- '--(\w+-)*(token|password|secret|key)\s' $argv; and return 1
-    # An HTTP auth header, and curl's -u user:password.
+    # An HTTP auth header, and curl's -u user:password, where either side
+    # may be empty: an API key often goes in as the user name alone.
     string match -qir '\b(authorization:|bearer\s)' -- $argv; and return 1
-    string match -qr '\s-u\s*[^\s:]+:\S' -- $argv; and return 1
+    string match -qr '\s-u\s*\S*:' -- $argv; and return 1
     # A password between the user name and the @ in a URL. Redis leaves the
     # user name empty.
     string match -qr '://[^/\s:@]*:[^/\s@]+@' -- $argv; and return 1

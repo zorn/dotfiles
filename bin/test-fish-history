@@ -55,6 +55,8 @@ expect skipped 'gh auth login --with-token abc123'
 expect skipped 'cli login --access-token abc123'
 expect skipped 'curl -H "Authorization: Bearer abc123" https://example.com'
 expect skipped 'curl -u admin:hunter2 https://example.com' # betterleaks:allow
+expect skipped 'curl -u abc123: https://example.com'
+expect skipped 'curl -u :hunter2 https://example.com'
 expect skipped 'echo first
 PGPASSWORD=hunter2 psql'
 
