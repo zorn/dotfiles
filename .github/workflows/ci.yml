@@ -102,3 +102,32 @@ jobs:
       - uses: actions/checkout@v7
       - name: Run checks
         run: ./bin/check link
+
+  fish:
+    name: fish
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+
+      # Ubuntu's apt fish predates fish_should_add_to_history, so this takes
+      # the static build from the release instead. fish publishes no checksums
+      # file, so the digest is our own, taken from the tarball when the
+      # version was pinned. Bumping the version means downloading the new
+      # tarball and running sha256sum over it.
+      - name: Install fish
+        env:
+          FISH_VERSION: 4.9.3
+          FISH_SHA256: 8f643d10ad1abb0ef7072764c01ceb5cf61b2d373fda400cf60f0bad69b7e095
+        run: |
+          set -euo pipefail
+          tarball="fish-${FISH_VERSION}-linux-x86_64.tar.xz"
+          mkdir -p "$RUNNER_TEMP/fish"
+          curl -sSfL -o "$RUNNER_TEMP/$tarball" \
+            "https://github.com/fish-shell/fish-shell/releases/download/${FISH_VERSION}/${tarball}"
+          echo "$FISH_SHA256  $RUNNER_TEMP/$tarball" | sha256sum --check --strict
+          tar -xJf "$RUNNER_TEMP/$tarball" -C "$RUNNER_TEMP/fish" fish
+          echo "$RUNNER_TEMP/fish" >> "$GITHUB_PATH"
+
+      - name: Run checks
+        run: ./bin/check fish

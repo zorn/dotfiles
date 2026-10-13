@@ -38,6 +38,10 @@
 #                The settings build must never overwrite a change made in
 #                Claude Code's UI, and nothing else would notice if it did.
 #                Each hook it registers must also resolve to a linked script.
+#   fish       — fish --no-execute over fish/config.fish, then
+#                bin/test-fish-history. A syntax error there breaks every new
+#                shell, and a history filter that misses a secret leaves it
+#                on disk without a word.
 
 set -euo pipefail
 
@@ -50,7 +54,7 @@ usage() {
   printf 'With no section named, every section runs.\n' >&2
 }
 
-all_sections=(secrets workflows shell skills link)
+all_sections=(secrets workflows shell skills link fish)
 
 contains() {
   local needle="$1" item
@@ -110,6 +114,9 @@ selected skills && require python3 'brew install python' \
 # The hexdocs hook parses its input with jq, so its test does too.
 { selected shell || selected link; } && require jq 'brew install jq' \
   'https://jqlang.org/download/'
+
+selected fish && require fish 'brew install fish' \
+  'https://fishshell.com/docs/current/#installation'
 
 [ "$missing" -eq 0 ] || exit 127
 
@@ -199,6 +206,15 @@ check_link() {
   ./bin/test-link
 }
 
+check_fish() {
+  printf '==> fish: config syntax\n'
+  fish --no-execute fish/config.fish || return 1
+  printf 'No syntax errors found.\n'
+
+  printf '\n==> test-fish-history: history filter\n'
+  ./bin/test-fish-history
+}
+
 advise() {
   case "$1" in
     secrets)
@@ -226,6 +242,11 @@ advise() {
       printf 'A test-link failure means bin/link could overwrite a change made in\n' >&2
       printf "Claude Code's UI, or register a hook with no script behind it.\n" >&2
       printf 'Fix bin/link before running it on a real HOME.\n' >&2
+      ;;
+    fish)
+      printf 'A syntax error means every new fish shell would fail to load its\n' >&2
+      printf 'config. A test-fish-history failure means a secret could reach\n' >&2
+      printf 'fish_history, or a harmless command would be kept out of it.\n' >&2
       ;;
   esac
   printf '\n' >&2
