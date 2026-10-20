@@ -48,6 +48,10 @@ function fish_should_add_to_history
     return 0
 end
 
+# Opt out of CLI telemetry for every tool that honors the DO_NOT_TRACK
+# convention, such as the Render CLI.
+set -gx DO_NOT_TRACK 1
+
 # Secrets and machine-only settings. This file sits outside the repo, so
 # nothing in it can be committed by accident.
 if test -f $__fish_config_dir/local.fish

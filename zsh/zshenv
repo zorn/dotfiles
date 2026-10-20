@@ -1,1 +1,5 @@
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
+
+# Opt out of CLI telemetry for every tool that honors the DO_NOT_TRACK
+# convention, such as the Render CLI.
+export DO_NOT_TRACK=1
