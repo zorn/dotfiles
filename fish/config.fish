@@ -1,12 +1,13 @@
 # PATH, lowest precedence first: fish_add_path prepends, and skips a directory
-# that does not exist, so a machine without Postgres.app just goes without.
+# that does not exist, so a machine without libpq just goes without.
 # --path edits PATH itself. Without it, fish_add_path writes the universal
 # fish_user_paths, which lands in fish_variables — machine state, not config.
 fish_add_path --path /usr/local/bin /usr/local/sbin
 if test -x /opt/homebrew/bin/brew
     /opt/homebrew/bin/brew shellenv fish | source
 end
-fish_add_path --path /Applications/Postgres.app/Contents/Versions/latest/bin
+# libpq is keg-only, so Homebrew does not link psql into its bin.
+fish_add_path --path /opt/homebrew/opt/libpq/bin
 
 # ASDF configuration code
 if test -z "$ASDF_DATA_DIR"
