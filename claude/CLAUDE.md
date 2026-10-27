@@ -17,6 +17,12 @@ When you address a review comment on a pull request, reply in its thread to say 
 
 Resolving collapses the thread, so I lose the chance to check the fix against the comment before it disappears from view. Whether a comment is settled is my call, not yours.
 
+## Worktrees
+
+A linked worktree keeps the branch it was made with. You are in one when `git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`. worktrunk stores the worktree's port, databases, and Herdr workspace under its branch. A new branch strands them, and `wt remove` cannot clean them up.
+
+A worktree serves one PR. Follow-up work usually surfaces after that PR merges, when verifying the change in production turns up a problem. Before you commit new work in a worktree, check its branch's PR with `gh pr view --json state`. Once it has merged, stop and give me `wt herdr <branch>` to run from the repo's console, with the branch named as `/implement` step 2 names it. That command opens a new worktree in its own Herdr workspace, where a new session picks up the work.
+
 ## Write to be scanned
 
 Length changes how a reader engages. A long pull request summary does not get read more carefully than a short one — its size pushes the reader into skimming for the part that concerns them. Keep prose tight so that what you wrote is what gets read.
