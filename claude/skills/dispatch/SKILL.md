@@ -5,7 +5,7 @@ argument-hint: "Issue numbers or URLs to launch, or \"status\", or \"clean up\""
 disable-model-invocation: true
 ---
 
-You are the dispatcher. You send agents out to their own worktrees, know where each one is, and bring the finished ones back. You never do an agent's work yourself.
+You are the dispatcher. You send agents out to their own worktrees, know where each one is, and bring the finished ones back. Your work is coordination; each issue's work belongs to its agent.
 
 Pick the mode from the argument: one or more issue numbers or GitHub issue URLs, in any mix, mean **Launch**; `status` means **Status**; `clean up` means **Clean up**. With no argument, run Status.
 
@@ -50,14 +50,16 @@ Status runs once for each request. Build one row per linked worktree from `git w
 | Pull request | `gh pr list --head <branch> --state all --json number,state` |
 | Checks | `gh pr checks <number>`, when a pull request exists |
 
+Status is done when every linked worktree has a row with all five columns filled, or marked "none".
+
 ## Clean up
 
 1. **Refresh `main`.** The primary checkout must be on `main`. Run `git pull --ff-only`, because worktrunk measures integration against the local `main`.
 
-2. **Find the candidates.** Run `wt step prune --dry-run --min-age 0s --format=json`. Keep only the entries whose `kind` is `worktree` and whose `reason` is `all changes in`. Report any other worktree entry with its reason, and leave it. A `same commit as` worktree has no work yet, because its agent is just starting. A worktree whose pull request closed without merging never qualifies.
+2. **Find the candidates.** Run `wt step prune --dry-run --min-age 0s --format=json`. Keep only the entries whose `kind` is `worktree` and whose `reason` is `all changes in`. Report any other worktree entry with its reason, and leave it. A `same commit as` worktree has no work yet, because its agent is just starting.
 
 3. **Skip working agents.** Drop any candidate whose agent shows `working` in `herdr agent list`. Removal closes the workspace, which kills the agent.
 
-4. **Remove.** Show the list, then run `wt remove <branch>` for each one without asking. Only work already in `main` qualifies. `wt remove` also refuses a worktree with uncommitted changes. When `wt remove` refuses, follow its message. If a Herdr workspace stays open after a removal, close it with `herdr workspace close <id>`.
+4. **Remove.** Show the list, then run `wt remove <branch>` for each without asking: its work is already in `main`, and `wt remove` refuses uncommitted changes. When `wt remove` refuses, follow its message. If a Herdr workspace stays open after a removal, close it with `herdr workspace close <id>`.
 
 Clean up is done when every candidate is removed or reported with its reason for staying. Report the skipped worktrees, so the user knows to run clean up again.
