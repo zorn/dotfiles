@@ -4,10 +4,9 @@
     "pr": "",
     "sessionUrl": false
   },
-  "effortLevel": "high",
   "enabledPlugins": {
     "cc-plugin-you-should-know@builtin": true,
-    "frontend-design@claude-plugins-official": false,
+    "frontend-design@claude-plugins-official": true,
     "rust-analyzer-lsp@claude-plugins-official": true
   },
   "feedbackSurveyRate": 0,
@@ -53,6 +52,5 @@
   "voice": {
     "enabled": true,
     "mode": "hold"
-  },
-  "voiceEnabled": true
+  }
 }
