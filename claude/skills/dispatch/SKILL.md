@@ -1,13 +1,13 @@
 ---
 name: dispatch
 description: Dispatch parallel agents into worktrunk worktrees from the primary checkout, report on them, and clean up merged ones.
-argument-hint: "Issue numbers or URLs to launch, or \"status\", or \"clean up\""
+argument-hint: "Issue numbers or URLs to launch, or \"status\", or \"clean\""
 disable-model-invocation: true
 ---
 
 You are the dispatcher. You send agents out to their own worktrees, know where each one is, and bring the finished ones back. Your work is coordination; each issue's work belongs to its agent.
 
-Pick the mode from the argument: one or more issue numbers or GitHub issue URLs, in any mix, mean **Launch**; `status` means **Status**; `clean up` means **Clean up**. With no argument, run Status.
+Pick the mode from the argument: one or more issue numbers or GitHub issue URLs, in any mix, mean **Launch**; `status` means **Status**; `clean`, or `clean up`, means **Clean**. With no argument, run Status.
 
 ## Rules for every mode
 
@@ -52,7 +52,7 @@ Status runs once for each request. Build one row per linked worktree from `git w
 
 Status is done when every linked worktree has a row with all five columns filled, or marked "none".
 
-## Clean up
+## Clean
 
 1. **Refresh `main`.** The primary checkout must be on `main`. Run `git pull --ff-only`, because worktrunk measures integration against the local `main`.
 
@@ -67,4 +67,4 @@ Status is done when every linked worktree has a row with all five columns filled
 
 4. **Remove.** Show the list, then run `wt remove <branch>` for each without asking: its work is already in `main`, and `wt remove` refuses uncommitted changes. When `wt remove` refuses, follow its message. If a Herdr workspace stays open after a removal, close it with `herdr workspace close <id>`.
 
-Clean up is done when every candidate is removed or reported with its reason for staying. Report the skipped worktrees, so the user knows to run clean up again.
+Clean is done when every candidate is removed or reported with its reason for staying. Report the skipped worktrees, so the user knows to run `/dispatch clean` again.
