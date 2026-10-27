@@ -23,11 +23,14 @@ If the work is not settled enough to build, stop and say so. `/grill` settles it
 
 ## 2. Branch
 
-First check whether this is a linked worktree: `git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`. In a linked worktree, skip this step and work on the branch it is already on. worktrunk stores the worktree's port, databases, and Herdr workspace under that branch. A new branch strands them, and `wt remove` cannot clean them up.
+First check whether this is a linked worktree: `git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`. A linked worktree never gets a new branch. worktrunk stores the worktree's port, databases, and Herdr workspace under its branch. A new branch strands them, and `wt remove` cannot clean them up.
 
-A worktree serves one PR. Follow-up work usually surfaces after that PR merges, when verifying the change in production turns up a problem. Once the branch's PR has merged (`gh pr view --json state`), the follow-up needs a new worktree. Stop and give the user `wt herdr <branch>` to run from the repo's console, with the branch named as below. That command opens the new worktree in its own Herdr workspace, where a new session picks up the work.
+In a linked worktree, check the branch's PR next (`gh pr view --json state`). A worktree serves one PR. Follow-up work usually surfaces after that PR merges, when verifying the change in production turns up a problem.
 
-Otherwise, branch off updated `main`:
+- **The PR has merged:** stop. Give the user `wt herdr <branch>` to run from the repo's console, with the branch named as below. That command opens a new worktree in its own Herdr workspace, where a new session picks up the work.
+- **No PR, or the PR is still open:** work on the current branch, and skip the commands below.
+
+In the primary checkout, branch off updated `main`:
 
 ```
 git checkout main && git pull --ff-only
