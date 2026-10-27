@@ -46,6 +46,18 @@ My [Zed](https://zed.dev) `settings.json`. Its `auto_install_extensions` list ma
 
 My global [asdf](https://asdf-vm.com) `.tool-versions`: the Erlang, Elixir, Ruby, and Node versions a directory gets when no project pins its own. `asdf set --home` writes through the symlink, so a version bump shows up here as a diff.
 
+### iTerm2 settings — `iterm2/`
+
+A snapshot of my [iTerm2](https://iterm2.com) preferences, for a one-time import on a new machine. It is not linked, because iTerm2 rewrites its plist constantly, and it is not loaded from a custom folder, because I don't want two machines syncing through git. The snapshot drops machine state such as window positions, update checks, and every `NoSync` key, which is the prefix iTerm2 itself uses for settings that should not travel.
+
+To import it, quit iTerm2 and run this from another terminal app:
+
+```bash
+defaults import com.googlecode.iterm2 ~/ProjectRepos/dotfiles/iterm2/com.googlecode.iterm2.plist
+```
+
+`defaults import` replaces the whole domain, so do this only on a fresh install.
+
 ### zsh startup files — `zsh/`
 
 I work in fish, but zsh is still my login shell, and GUI apps like Zed build their environment by starting a zsh login shell. `zprofile` puts Homebrew on that PATH and `zshenv` puts cargo there. Without them, those apps can't find either.
