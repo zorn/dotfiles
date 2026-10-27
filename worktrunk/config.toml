@@ -13,8 +13,6 @@ teardown = "~/.config/worktrunk/hooks/pre-remove"
 
 # --no-cd keeps the console out of the new worktree; worktrunk/README.md says
 # why. --execute runs herdr from inside the new worktree, so `.` is its path.
-# The label shortens zorn/issue-271-error-rate-… to `#271 error rate`, because
-# Herdr's sidebar cuts names at about 13 characters. It reads the branch from
-# the first argument, so the branch goes before any flags.
+# --label gives the workspace a short label; worktrunk/README.md says why.
 [aliases]
-herdr = 'wt switch --create {{ args }} --no-cd --execute herdr -- worktree open --cwd {{ primary_worktree_path }} --path . --focus --label {% set p = args[0] | split("-") %}{{ "#" ~ p[1] ~ " " ~ p[2:4] | join(" ") if args[0] is startingwith("zorn/issue-") else args[0] }}'
+herdr = 'wt switch --create {{ args }} --no-cd --execute herdr -- worktree open --cwd {{ primary_worktree_path }} --path . --focus --label {% set words = args[0] | split("-") %}{{ ("#" ~ words[1] ~ " " ~ words[2:4] | join(" ")) | trim if args[0] is startingwith("zorn/issue-") else args[0] }}'

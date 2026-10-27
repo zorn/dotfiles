@@ -22,7 +22,9 @@ The first time `wt` runs a repo's own hooks, it asks you to approve them.
 wt herdr <branch>
 ```
 
-That creates the worktree and opens it in Herdr as its own workspace. The workspace takes a short label, so `zorn/issue-271-error-rate-without-scanners` shows as `#271 error rate`, and the sidebar does not cut it off. Another branch name is used as the label unchanged. Put the branch before any flags, because the alias reads the label from its first argument. Before `wt` returns, the hooks copy `_build` and `deps`, and write the worktree's port and database names to `.env.worktree`. The databases are then created and migrated in the background. `wt config state logs get` lists the log files, and that step's log is `post-start/postgres.log`.
+That creates the worktree and opens it in Herdr as its own workspace. Before `wt` returns, the hooks copy `_build` and `deps`, and write the worktree's port and database names to `.env.worktree`. The databases are then created and migrated in the background. `wt config state logs get` lists the log files, and that step's log is `post-start/postgres.log`.
+
+The workspace takes a short label: `zorn/issue-271-error-rate-without-scanners` shows as `#271 error rate`. Herdr's sidebar cuts long names off, so two branches showed as the same `zorn/issue-27…`. Any other branch name becomes the label unchanged. Put the branch before any flags, because the alias reads the label from its first argument.
 
 Keep the repo workspace's consoles out of the worktree directory. In Herdr 0.9.x, if one of them is inside the worktree, `herdr worktree open` can take over the repo's workspace instead of opening a new one ([herdrdev/herdr#4293](https://github.com/herdrdev/herdr/issues/4293)). `wt herdr` passes `--no-cd` to `wt switch` for this reason.
 
