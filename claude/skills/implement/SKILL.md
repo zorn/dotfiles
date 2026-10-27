@@ -23,7 +23,11 @@ If the work is not settled enough to build, stop and say so. `/grill` settles it
 
 ## 2. Branch
 
-Off updated `main`:
+First check whether this is a linked worktree: `git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`. In one, skip this step and work on the branch it is already on. worktrunk keys the worktree's port, databases, and Herdr workspace on that branch, so a new branch strands them and `wt remove` no longer finds the worktree. `main` is checked out in the primary checkout anyway.
+
+Follow-up work in a worktree, such as a second PR after the first merges, needs a new worktree rather than a new branch in this one. Stop and give the user `wt herdr <branch>` to run from the repo's console, which opens the new worktree in its own Herdr workspace for a new session.
+
+Otherwise, branch off updated `main`:
 
 ```
 git checkout main && git pull --ff-only
