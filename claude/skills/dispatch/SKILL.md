@@ -56,7 +56,12 @@ Status is done when every linked worktree has a row with all five columns filled
 
 1. **Refresh `main`.** The primary checkout must be on `main`. Run `git pull --ff-only`, because worktrunk measures integration against the local `main`.
 
-2. **Find the candidates.** Run `wt step prune --dry-run --min-age 0s --format=json`. Keep only the entries whose `kind` is `worktree` and whose `reason` is `all changes in`. Report any other worktree entry with its reason, and leave it. A `same commit as` worktree has no work yet, because its agent is just starting.
+2. **Find the candidates.** A worktree qualifies only when git and GitHub both say it is finished:
+
+   - **Git:** it appears in `wt step prune --dry-run --min-age 0s --format=json` with `kind` `worktree`. That means its work is in `main`.
+   - **GitHub:** its branch's pull request is `MERGED` in `gh pr list --head <branch> --state all --json state`.
+
+   A worktree with no commits also appears in prune, as `same commit as`, or as `ancestor of` once `main` moves on. Its agent is just starting, and only the merged pull request tells it apart. Leave any worktree that fails either check, including one whose pull request lookup fails, and report it with its reason.
 
 3. **Skip working agents.** Drop any candidate whose agent shows `working` in `herdr agent list`. Removal closes the workspace, which kills the agent.
 
