@@ -19,9 +19,9 @@ Resolving collapses the thread, so I lose the chance to check the fix against th
 
 ## Worktrees
 
-A linked worktree keeps the branch it was made with. You are in one when `git rev-parse --git-dir` differs from `git rev-parse --git-common-dir`. worktrunk stores the worktree's port, databases, and Herdr workspace under its branch. A new branch strands them, and `wt remove` cannot clean them up.
+A linked worktree keeps the branch it was made with. You are in one when the two paths that `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ. worktrunk stores the worktree's port, databases, and Herdr workspace under its branch. A new branch strands them, and `wt remove` cannot clean them up.
 
-A worktree serves one PR. Follow-up work usually surfaces after that PR merges, when verifying the change in production turns up a problem. Before you commit new work in a worktree, check its branch's PR with `gh pr view --json state`. Once it has merged, stop and give me `wt herdr <branch>` to run from the repo's console, with the branch named as `/implement` step 2 names it. That command opens a new worktree in its own Herdr workspace, where a new session picks up the work.
+A worktree serves one pull request. Follow-up work usually surfaces after that pull request merges, when verifying the change in production turns up a problem. Before you start new work in a worktree, check its branch's pull request with `gh pr view --json state`. Once it has merged or closed, stop and give me `git pull --ff-only && wt herdr <branch>` to run from the repo's console, with the branch named as `/implement`'s Branch step names it. The pull brings in the merged change, because `wt` branches off the local default branch. The command opens a new worktree in its own Herdr workspace, where a new session picks up the work.
 
 ## Write to be scanned
 
