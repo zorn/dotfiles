@@ -1336,8 +1336,6 @@
 			<true/>
 			<key>Window Type</key>
 			<integer>0</integer>
-			<key>Working Directory</key>
-			<string>/Users/zorn</string>
 		</dict>
 	</array>
 	<key>NumberOfLinesForAccessibility</key>
