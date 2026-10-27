@@ -23,7 +23,13 @@ If the work is not settled enough to build, stop and say so. `/grill` settles it
 
 ## 2. Branch
 
-Off updated `main`:
+In a linked worktree, the global Worktrees rule governs this step. Check the branch's PR first:
+
+- **The PR has merged or closed:** stop, and hand over `wt herdr` as that rule says.
+- **The branch names a different issue from the one you were given:** stop and hand over `wt herdr` the same way. Each issue gets its own worktree.
+- **No PR, or the PR is still open, for this issue:** work on the current branch, and skip the commands below.
+
+In the primary checkout, branch off updated `main`:
 
 ```
 git checkout main && git pull --ff-only
