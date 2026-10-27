@@ -31,10 +31,10 @@ Pick the mode from the argument: one or more issue numbers or GitHub issue URLs,
 
    ```sh
    herdr agent start issue-271 --kind claude --pane <pane-id>
-   herdr agent prompt issue-271 "/implement 271" --wait --until working
+   herdr agent prompt issue-271 "/implement 271" --wait --until working --until blocked
    ```
 
-   Each agent pauses when `/implement` needs a decision, so `blocked` is expected later.
+   The prompt returns once the agent starts its turn. Each agent pauses when `/implement` needs a decision, so `blocked` is expected, at once or later.
 
 Launch is done when `herdr agent list` shows one agent per issue, each with its `cwd` in its own worktree. Report the Status table.
 
