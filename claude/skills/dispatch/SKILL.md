@@ -25,7 +25,7 @@ Pick the mode from the argument: one or more issue numbers or GitHub issue URLs,
 
 3. **Plan, and wait for "go".** Read each issue with `gh issue view <n>`. Name its branch `zorn/issue-<NNN>-<slug>`, as `/implement`'s Branch step does. Show one row per issue with its number, title, and branch. Wait for "go" before you create anything.
 
-4. **Create each worktree.** Run `wt herdr <branch>`. Its last line is JSON. Read the new pane's ID from `.result.root_pane.pane_id`.
+4. **Create each worktree.** Run `wt herdr <branch>`. Its last line is JSON. Read the new pane's ID from `.result.root_pane.pane_id`. If `wt` asks to approve the repo's hooks, stop, and have the user run one `wt herdr` by hand to approve them.
 
 5. **Start each agent.** Name it after the issue, such as `issue-271`:
 
