@@ -148,6 +148,15 @@ link_path "$repo_root/worktrunk/hooks" \
 link_path "$repo_root/herdr/config.toml" \
   "$HOME/.config/herdr/config.toml" 'herdr/config.toml'
 
+# espanso's config and base matches, not the espanso directory itself:
+# `espanso install` writes packages into match/packages, and personal matches
+# live in an untracked match/private.yml beside the link.
+espanso_dir="$HOME/Library/Application Support/espanso"
+link_path "$repo_root/espanso/config/default.yml" \
+  "$espanso_dir/config/default.yml" 'espanso/config/default.yml'
+link_path "$repo_root/espanso/match/base.yml" \
+  "$espanso_dir/match/base.yml" 'espanso/match/base.yml'
+
 # fish's config file, not ~/.config/fish itself: fish writes fish_variables
 # there, and installers drop generated functions and completions beside it.
 link_path "$repo_root/fish/config.fish" \

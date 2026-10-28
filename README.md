@@ -32,6 +32,10 @@ The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I crea
 
 My [Herdr](https://herdr.dev) `config.toml`: the theme, mouse capture, and onboarding turned off. Only that file is tracked. Herdr keeps its sockets, logs, and session snapshots in the same directory, and those are machine state.
 
+### espanso config — `espanso/`
+
+My [espanso](https://espanso.org) text expander config: `config/default.yml` and the snippets in `match/base.yml`. Only those two files are tracked. `espanso install` writes packages into `match/packages/`, and those come back from reinstalling. Snippets too private for a public repo, like my phone number, live in `~/Library/Application Support/espanso/match/private.yml` instead. That file sits outside the repo, so it cannot be committed, and espanso loads it alongside `base.yml` with no import. On a fresh machine it has to be recreated by hand.
+
 ### fish config — `fish/`
 
 My [fish](https://fishshell.com) `config.fish`: PATH setup, including asdf's shims. Only that one file is tracked. Fish writes `fish_variables` into the same directory, and installers add their own generated functions and completions there. Those files are machine state, so on a fresh machine they come back from the tools that write them:
@@ -73,7 +77,7 @@ git clone https://github.com/zorn/dotfiles.git ~/ProjectRepos/dotfiles
 ~/ProjectRepos/dotfiles/bin/link
 ```
 
-`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `CLAUDE.md`, `keybindings.json`, `statusline-command.sh`, and the `hooks/` directory to the same names. It builds `~/.claude/settings.json` instead, from `claude/settings.json` and the private file. It links the worktrunk config into `~/.config/worktrunk/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, `zed/settings.json` into `~/.config/zed/`, and `asdf/tool-versions`, `zsh/zprofile`, and `zsh/zshenv` to their dotted names in `~` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a linked file takes effect immediately — no reinstall step. After editing `claude/settings.json`, re-run `bin/link`. It rebuilds the live file unless a change made in Claude Code's UI is there, which it shows as a diff instead of overwriting.
+`bin/link` mirrors `claude/` into `~/.claude/` with symlinks: each skill into `~/.claude/skills/`, and `CLAUDE.md`, `keybindings.json`, `statusline-command.sh`, and the `hooks/` directory to the same names. It builds `~/.claude/settings.json` instead, from `claude/settings.json` and the private file. It links the worktrunk config into `~/.config/worktrunk/`, the Herdr config into `~/.config/herdr/`, the espanso files into `~/Library/Application Support/espanso/`, `fish/config.fish` into `~/.config/fish/`, `git/config` and `git/ignore` into `~/.config/git/`, `zed/settings.json` into `~/.config/zed/`, and `asdf/tool-versions`, `zsh/zprofile`, and `zsh/zshenv` to their dotted names in `~` the same way. It also points `core.hooksPath` at `githooks/` so the pre-commit secret scan runs. It's idempotent, and it refuses to overwrite anything that already exists as a real file or directory. Editing a linked file takes effect immediately — no reinstall step. After editing `claude/settings.json`, re-run `bin/link`. It rebuilds the live file unless a change made in Claude Code's UI is there, which it shows as a diff instead of overwriting.
 
 ## Secrets
 
