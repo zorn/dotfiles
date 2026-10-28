@@ -2,11 +2,11 @@
 
 Phoenix LiveView–first. The concern *names* — stale read, lost update, unhandled conflict — transfer off Phoenix even where the specific *fix* does not.
 
-Read every write path in the diff as if two people act on the same resource at once: one in each browser tab, each holding the struct their page loaded. Three concerns, each keyed to a signal in the diff: context functions that write trigger the server concerns; LiveViews and controllers that call them trigger the UI concerns; both trigger the test concern.
+Read every write path in the diff as if two people act on the same resource at once, one in each browser tab, each holding the struct their page loaded. The items fall into three groups, each keyed to a signal in the diff. Context functions that write trigger the server group. LiveViews and controllers that call them trigger the UI group. Either one triggers the test group.
 
 ## Server: the stored row decides
 
-- Stale-struct guard — a state check (published? closed? still a draft?) reads the struct the caller passed in, not the stored row, so a tab that loaded the resource earlier acts on a state that has since changed. → recheck the stored row under a lock inside the transaction, or fold the check into a conditional update.
+- Stale-struct guard — a state check (published? closed? still a draft?) reads the struct the caller passed in, not the stored row, so a tab that loaded it earlier acts on a stale state. → recheck the stored row under a lock inside the transaction, or fold the check into a conditional update.
 - Repeatable one-shot transition — a transition meant to happen once (close, publish, approve) runs again from a second tab and overwrites the first timestamp. → `UPDATE … WHERE <column> IS NULL` through `update_all`, and return an error when no row matched.
 - Read-modify-write without a lock — a value is read, changed in Elixir, and written back, so a concurrent writer's change is lost. → `lock: "FOR UPDATE"`, or an atomic `update_all`.
 - Unguarded concurrent edits — two people can edit the same resource, with no `lock_version` and no stated choice of last-write-wins. → `Ecto.Changeset.optimistic_lock/3`, or a comment that records last-write-wins as deliberate.

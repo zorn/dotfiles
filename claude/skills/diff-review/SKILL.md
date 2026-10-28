@@ -122,9 +122,9 @@ You are done with this step once you have decided the axis runs or is skipped, a
 
 ### 7. Decide whether the Multi-user axis runs
 
-Scan the diff for a **write path** — `Repo.insert`, `Repo.update`, `Repo.delete`, `Repo.update_all`, `Ecto.Multi`, a changeset applied to a stored record, or a LiveView `handle_event` or controller action that calls one. A read-only diff skips the axis; note this in the final report. If a write path appears, the Multi-user sub-agent runs in step 8, and its baseline comes from `reference/multi-user-baseline.md` — read that file and paste it into the sub-agent prompt.
+Scan the diff for a **write path** — `Repo.insert`, `Repo.update`, `Repo.delete`, `Repo.update_all`, `Ecto.Multi`, a changeset applied to a stored record, or a LiveView `handle_event` or controller action that calls one. A read-only diff skips the axis; note this in the final report. If a write path appears, the Multi-user sub-agent runs in step 8, and its baseline comes from `reference/multi-user-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it.
 
-The axis reads the diff as if two people act on the same resource at once. It covers one slice of correctness on purpose, races between users, and leaves general correctness to `/code-review` ([ADR 0007](https://github.com/zorn/dotfiles/blob/main/docs/adr/0007-multi-user-review-axis.md)).
+It deliberately covers only races between users, and leaves general correctness to `/code-review` ([ADR 0007](https://github.com/zorn/dotfiles/blob/main/docs/adr/0007-multi-user-review-axis.md)).
 
 You are done with this step once you have decided the axis runs or is skipped, and — if it runs — have the baseline text in hand to paste.
 
@@ -168,7 +168,7 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 
 - The full diff command and commit list.
 - The **multi-user baseline from step 7** pasted in full — the sub-agent has no other access to it.
-- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <server|ui|test> | <the hunk it turns on, at most two lines>`. Read every write path as if two people act on the same resource at once, each holding the struct their page loaded. Read the callers of a changed context function, and the context functions a changed LiveView calls, even where they sit outside the diff — a conflict error added on one side is a crash on the other. Every finding is a judgment call, and a documented repo standard overrides the baseline. Return nothing if you find nothing."
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <server|ui|test> | <the hunk it turns on, at most two lines>`. Read the callers of a changed context function, and the context functions a changed LiveView calls, even where they sit outside the diff — a conflict error added on one side is a crash on the other. Every finding is a judgment call, and a documented repo standard overrides the baseline. Return nothing if you find nothing."
 
 ### 9. Present the findings as a decision list
 
@@ -207,6 +207,6 @@ A change can pass one axis and fail another:
 - Code that is correct and on-spec but buries its intent in verbose or ungrammatical comments → **Standards and Spec pass, Prose fail.**
 - Code that is clean, on-spec, and clearly written but ships with a test that sleeps its way to green → **the other three pass, Tests fails.**
 - Code that is clean, on-spec, clearly written, and honestly tested but N+1s every request under load → **the other four pass, Database fails.**
-- Code that passes all five but trusts the ballot struct a tab loaded an hour ago → **the other five pass, Multi-user fails.**
+- Code that is clean, on-spec, clearly written, honestly tested, and fast under load but trusts the struct a tab loaded an hour ago → **the other five pass, Multi-user fails.**
 
 Reporting them separately stops one axis from masking another.
