@@ -1,5 +1,12 @@
 [ -f "$HOME/.cargo/env" ] && . "$HOME/.cargo/env"
 
 # Opt out of CLI telemetry for every tool that honors the DO_NOT_TRACK
-# convention, such as the Render CLI.
+# convention, such as the Render CLI. fish/config.fish sets it for fish.
 export DO_NOT_TRACK=1
+
+# Claude Code reads DO_NOT_TRACK as DISABLE_TELEMETRY, which also stops its
+# feature-flag fetch and hides flag-gated features such as the "You should
+# know" mod. Clear it for Claude Code alone. fish/config.fish does the same.
+claude() {
+  env -u DO_NOT_TRACK claude "$@"
+}

@@ -53,6 +53,13 @@ end
 # convention, such as the Render CLI.
 set -gx DO_NOT_TRACK 1
 
+# Claude Code reads DO_NOT_TRACK as DISABLE_TELEMETRY, which also stops its
+# feature-flag fetch and hides flag-gated features such as the "You should
+# know" mod. Clear it for Claude Code alone. zsh/zshenv does the same.
+function claude --wraps claude
+    env -u DO_NOT_TRACK claude $argv
+end
+
 # Secrets and machine-only settings. This file sits outside the repo, so
 # nothing in it can be committed by accident.
 if test -f $__fish_config_dir/local.fish
