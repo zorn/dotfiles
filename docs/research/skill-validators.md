@@ -56,7 +56,9 @@ A search turns up a dozen or more SKILL.md linters on npm, PyPI and GitHub, most
 - Claude Code's own fields: an unknown field measured against Claude Code's documented list (CC-SK-017), and value checks for `model`, `context`, `effort`, `shell`, `paths`, `hooks`, and the `disable-model-invocation` and `user-invocable` types (CC-SK-001 to CC-SK-020) ([rules.json](https://github.com/agent-sh/agnix/blob/main/knowledge-base/rules.json)).
 - Taste rules `bin/check-skills` does not attempt, such as a description lacking a when-to-use trigger (AS-020) or not in the third person (CC-SK-032).
 
-It treats any file named `SKILL.md` as a skill, whatever its directory ([detection.rs](https://github.com/agent-sh/agnix/blob/main/crates/agnix-core/src/file_types/detection.rs)), so `agnix claude/skills` would find this repo's skills. Running it was blocked in this session, because it is third-party code, so every agnix claim here comes from its source, not from a run.
+It treats any file named `SKILL.md` as a skill, whatever its directory ([detection.rs](https://github.com/agent-sh/agnix/blob/main/crates/agnix-core/src/file_types/detection.rs)), so `agnix claude/skills` finds this repo's skills.
+
+**Observed on agnix 0.59.3:** `npx agnix --target claude-code claude/skills` reports 0 errors and 0 warnings on this repo, so it has nothing to port into `CASES` today. A scratch skill with deliberate faults confirms that the clean result is real. agnix flagged an uppercase `name`, an invalid `effort: extreme`, and a description with no when-to-use trigger. The other agnix claims in this note come from its source and rule catalog, not from a run.
 
 ## 5. Point by point
 
@@ -85,4 +87,4 @@ Two rows matter most. Every other tool parses frontmatter with a full YAML libra
 - `claude plugin validate` adds nothing a `bin/check-skills` pass does not already cover. It also needs Claude Code installed on the runner.
 - agnix is the only tool that adds coverage, mostly Claude Code value checks such as a misspelled `effort` level. It would be one more curl'd pin and checksum that Dependabot cannot see, on a pre-1.0 tool that releases every few days.
 
-Running `npx agnix --target claude-code claude/skills` once by hand, and porting any finding worth keeping into `CASES`, gets that coverage without the upkeep. The docstring's "it is not on PyPI" is now out of date and is worth a one-line fix; the "demonstration only" reasoning still stands.
+An occasional manual `npx agnix --target claude-code claude/skills` gets that coverage without the upkeep, with any finding worth keeping ported into `CASES`. The first such run, on 2026-10-27, came back clean. The docstring's "it is not on PyPI" is now out of date and is worth a one-line fix; the "demonstration only" reasoning still stands.
