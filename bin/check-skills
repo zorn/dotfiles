@@ -54,7 +54,8 @@ KNOWN_FIELDS = ("name", "description", "license", "compatibility", "metadata", "
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):(?:[ \t]+(.*?))?[ \t]*$")
-FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
+# A backtick fence cannot have a backtick after it; that line is inline code.
+FENCE_RE = re.compile(r"^[ \t]*(`{3,}(?=[^`]*$)|~{3,})(.*)$")
 CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
 REF_LINK_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*<?([^>\s]+)>?", re.M)
@@ -202,6 +203,11 @@ def parse_frontmatter(text: str) -> dict:
             # A field nests one level only. Reading a deeper line as a sibling
             # would flatten its mapping.
             leading = raw[: len(raw) - len(raw.lstrip())]
+            if "\t" in leading:
+                raise FrontmatterError(
+                    f"line {number}: `{key}` is indented with a tab, which YAML "
+                    "does not allow — indent with spaces"
+                )
             if indent is None:
                 indent = leading
             elif len(leading) > len(indent):
@@ -443,6 +449,7 @@ CASES = [
     ("extended", {"SKILL.md": "---\nname: extended\ndescription: A thing.\nmodel: opus\n---\n"}, []),
     ("mapped", {"SKILL.md": "---\nname: mapped\ndescription: A thing.\nmetadata:\n  author: zorn\n---\n"}, []),
     ("deep-map", {"SKILL.md": "---\nname: deep-map\ndescription: A thing.\nmetadata:\n  upstream:\n    repo: x\n---\n"}, ["nested more than one level"]),
+    ("tabbed-map", {"SKILL.md": "---\nname: tabbed-map\ndescription: A thing.\nmetadata:\n\tauthor: zorn\n---\n"}, ["tab"]),
     ("ragged-map", {"SKILL.md": "---\nname: ragged-map\ndescription: A thing.\nmetadata:\n    author: zorn\n  team: x\n---\n"}, ["indented differently"]),
     ("blank-map", {"SKILL.md": "---\nname: blank-map\ndescription: A thing.\nmetadata:\n---\n"}, []),
     ("spilled", {"SKILL.md": '---\nname: spilled\ndescription: "A thing." and more\n---\n'}, ["follows the closing"]),
@@ -482,6 +489,11 @@ CASES = [
     (
         "closed-nested-fence",
         {"SKILL.md": "---\nname: closed-nested-fence\ndescription: A thing.\n---\n\n````md\n```md\n```\n````\n\n[gone](reference/gone.md)\n"},
+        ["does not exist"],
+    ),
+    (
+        "inline-triple",
+        {"SKILL.md": "---\nname: inline-triple\ndescription: A thing.\n---\n\n```x``` is inline code.\n\n[gone](reference/gone.md)\n"},
         ["does not exist"],
     ),
     (
