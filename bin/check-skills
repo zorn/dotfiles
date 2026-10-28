@@ -54,7 +54,7 @@ KNOWN_FIELDS = ("name", "description", "license", "compatibility", "metadata", "
 NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 
 KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):(?:[ \t]+(.*?))?[ \t]*$")
-FENCE_RE = re.compile(r"^[ \t]*(?:```|~~~)")
+FENCE_RE = re.compile(r"^[ \t]*(`{3,}|~{3,})(.*)$")
 CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
 REF_LINK_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*<?([^>\s]+)>?", re.M)
@@ -181,6 +181,7 @@ def parse_frontmatter(text: str) -> dict:
 
     data: dict = {}
     pending = None  # the key an indented block would belong to
+    indent = None  # the leading whitespace of that block's first line
     for number, raw in enumerate(lines[1:end], start=2):
         if not raw.strip() or raw.lstrip().startswith("#"):
             continue
@@ -198,6 +199,21 @@ def parse_frontmatter(text: str) -> dict:
                 raise FrontmatterError(
                     f"line {number}: `{key}` is indented but belongs to nothing"
                 )
+            # One level is all a field takes. A deeper line belongs to the key
+            # above it, and reading it as a sibling flattens the mapping.
+            leading = raw[: len(raw) - len(raw.lstrip())]
+            if indent is None:
+                indent = leading
+            elif len(leading) > len(indent):
+                raise FrontmatterError(
+                    f"line {number}: `{key}` is nested more than one level under "
+                    f"`{pending}` — flatten it into a single `key: value` line"
+                )
+            elif leading != indent:
+                raise FrontmatterError(
+                    f"line {number}: `{key}` is indented differently from the "
+                    f"other keys under `{pending}`"
+                )
             if data[pending] is None:
                 data[pending] = {}
             if key in data[pending]:
@@ -211,6 +227,7 @@ def parse_frontmatter(text: str) -> dict:
             )
         data[key] = value
         pending = key if value is None else None
+        indent = None
 
     # A key that opened no indented block held an empty value, not a mapping.
     return {key: ("" if value is None else value) for key, value in data.items()}
@@ -219,13 +236,25 @@ def parse_frontmatter(text: str) -> dict:
 def strip_code(text: str) -> str:
     """Blank out code, so a link written as an example is not checked as a real one."""
     kept = []
-    in_fence = False
+    opener = None  # the fence the current block opened with, if inside one
     for line in text.splitlines():
-        if FENCE_RE.match(line):
-            in_fence = not in_fence
+        fence = FENCE_RE.match(line)
+        if fence and opener is None:
+            opener = fence.group(1)
             kept.append("")
             continue
-        kept.append("" if in_fence else CODE_SPAN_RE.sub("", line))
+        # Only a bare run of the opener's character, at least as long, closes
+        # the block. Anything shorter or different is an example inside it.
+        if (
+            fence
+            and fence.group(1)[0] == opener[0]
+            and len(fence.group(1)) >= len(opener)
+            and not fence.group(2).strip()
+        ):
+            opener = None
+            kept.append("")
+            continue
+        kept.append("" if opener else CODE_SPAN_RE.sub("", line))
     return "\n".join(kept)
 
 
@@ -414,7 +443,8 @@ CASES = [
     ("commented", {"SKILL.md": '---\nname: commented\ndescription: "A thing." # why\n---\n'}, []),
     ("extended", {"SKILL.md": "---\nname: extended\ndescription: A thing.\nmodel: opus\n---\n"}, []),
     ("mapped", {"SKILL.md": "---\nname: mapped\ndescription: A thing.\nmetadata:\n  author: zorn\n---\n"}, []),
-    ("blank-map", {"SKILL.md": "---\nname: blank-map\ndescription: A thing.\nmetadata:\n---\n"}, []),
+    ("deep-map", {"SKILL.md": "---\nname: deep-map\ndescription: A thing.\nmetadata:\n  upstream:\n    repo: x\n---\n"}, ["nested more than one level"]),
+    ("blank-map",{"SKILL.md": "---\nname: blank-map\ndescription: A thing.\nmetadata:\n---\n"}, []),
     ("spilled", {"SKILL.md": '---\nname: spilled\ndescription: "A thing." and more\n---\n'}, ["follows the closing"]),
     ("renamed", {"SKILL.md": "---\nname: old-name\ndescription: A thing.\n---\n"}, ["directory"]),
     ("bad--name", {"SKILL.md": "---\nname: bad--name\ndescription: A thing.\n---\n"}, ["hyphens"]),
@@ -443,6 +473,16 @@ CASES = [
         "fenced",
         {"SKILL.md": "---\nname: fenced\ndescription: A thing.\n---\n\n```md\n[gone](reference/gone.md)\n```\n"},
         [],
+    ),
+    (
+        "nested-fence",
+        {"SKILL.md": "---\nname: nested-fence\ndescription: A thing.\n---\n\n````md\n```md\n[gone](reference/gone.md)\n```\n````\n"},
+        [],
+    ),
+    (
+        "after-nested-fence",
+        {"SKILL.md": "---\nname: after-nested-fence\ndescription: A thing.\n---\n\n```md\n~~~\n```\n\n[gone](reference/gone.md)\n"},
+        ["does not exist"],
     ),
     (
         "spanned",
