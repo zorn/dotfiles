@@ -7,9 +7,11 @@ indistinguishable from a skill that simply chose not to activate. You find out
 weeks later. This is the thing that notices instead.
 
 The spec (https://agentskills.io/specification) is small enough to check
-directly, which is why this does not lean on the reference validator: it is
-not on PyPI, and its own README says it is "intended for demonstration
-purposes only. It is not meant to be used in production."
+directly, which is why this does not lean on the reference validator. That
+validator rejects every field the spec does not define, so it fails the
+skills here that use Claude Code's own fields. Its README also says it is
+"intended for demonstration purposes only. It is not meant to be used in
+production." docs/research/skill-validators.md compares the alternatives.
 
 Frontmatter is read by a deliberately narrow parser rather than by PyYAML.
 Requiring a pip install before `bin/check` will run is a worse trade than
