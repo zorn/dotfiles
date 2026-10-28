@@ -19,8 +19,9 @@ Defers to project tooling. If the project depends on [`excellent_migrations`](ht
 
 ## Transaction consistency
 
+Lost updates and stale reads between users belong to the Multi-user axis, so leave them out here.
+
 - Dependent writes with no transaction — a mid-sequence failure leaves partial state. → wrap in `Ecto.Multi` / `Repo.transaction`.
-- Read-modify-write without a lock — a lost update under concurrency. → `lock: "FOR UPDATE"` or an atomic `update_all`.
 - Side effects (email, Oban job, HTTP call) fired inside the transaction — a later rollback can't recall them. → enqueue after commit.
 
 ## Query performance
