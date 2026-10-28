@@ -1,5 +1,7 @@
 # No Correctness Axis
 
+> **Scoped by [ADR 0007](0007-multi-user-review-axis.md)**: races between two people acting on the same resource are checked by the Multi-user axis. General correctness stays with `/code-review`.
+
 `/diff-review` has no axis for code that is wrong in general — nil handling, an off-by-one, a race — even though the gap is real: Spec catches wrong-against-the-spec, and nothing else in the skill catches a plain bug. When the Tests axis was added for [issue #36](https://github.com/zorn/dotfiles/issues/36), a Correctness axis beside it was the obvious next step, and we chose instead to leave correctness to the native `/code-review` skill, which already owns it with effort levels, `--fix`, and `--comment`, and which the `/implement` flow already prompts after the PR.
 
 ## Consequences & Tradeoffs
