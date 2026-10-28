@@ -122,7 +122,7 @@ You are done with this step once you have decided the axis runs or is skipped, a
 
 ### 7. Decide whether the Multi-user axis runs
 
-Scan the diff for a **write path** — `Repo.insert`, `Repo.update`, `Repo.delete`, `Repo.update_all`, `Ecto.Multi`, a changeset applied to a stored record, or a LiveView `handle_event` or controller action that calls one. A read-only diff skips the axis; note this in the final report. If a write path appears, the Multi-user sub-agent runs in step 8, and its baseline comes from `reference/multi-user-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it. The reasoning behind the axis is in [ADR 0007](https://github.com/zorn/dotfiles/blob/main/docs/adr/0007-multi-user-review-axis.md).
+Scan the diff for a **write path** — `Repo.insert`, `Repo.update`, `Repo.delete`, `Repo.update_all`, `Ecto.Multi`, a changeset applied to a stored record, raw SQL that writes, the equivalent write call on another stack, or any LiveView `handle_event` or controller action. A read-only diff skips the axis; note this in the final report. If a write path appears, the Multi-user sub-agent runs in step 8, and its baseline comes from `reference/multi-user-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it. The reasoning behind the axis is in [ADR 0007](https://github.com/zorn/dotfiles/blob/main/docs/adr/0007-multi-user-review-axis.md).
 
 You are done with this step once you have decided the axis runs or is skipped, and — if it runs — have the baseline text in hand to paste.
 
@@ -166,7 +166,7 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 
 - The full diff command and commit list.
 - The **multi-user baseline from step 7** pasted in full — the sub-agent has no other access to it.
-- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <server|ui|test> | <the hunk it turns on, at most two lines>`. Each claim names the second user and what they do between the first user's read and write. Read the callers of a changed context function, and the context functions a changed LiveView calls, even where they sit outside the diff — a conflict error added on one side is a crash on the other. Every finding is a judgment call, and a documented repo standard overrides the baseline. Return nothing if you find nothing."
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <server|ui|test> | <the hunk it turns on, at most two lines>`. Each `server` and `ui` claim names the second user and what they do between the first user's read and write. Read the callers of a changed context function, and the context functions a changed LiveView calls, even where they sit outside the diff — a conflict error added on one side is a crash on the other. Every finding is a judgment call, and a documented repo standard overrides the baseline. Return nothing if you find nothing."
 
 ### 9. Present the findings as a decision list
 

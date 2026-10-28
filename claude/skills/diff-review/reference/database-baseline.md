@@ -19,8 +19,9 @@ Defers to project tooling. If the project depends on [`excellent_migrations`](ht
 
 ## Transaction consistency
 
-Leave lost updates and stale reads between users to the Multi-user axis.
+Leave races between users to the Multi-user axis. This concern covers concurrent writes from jobs and processes.
 
+- Read-modify-write without a lock in a job or process — an Oban worker or GenServer reads a value, changes it in Elixir, and writes it back, so a concurrent writer's change is lost. → `lock: "FOR UPDATE"`, or an atomic `update_all`.
 - Dependent writes with no transaction — a mid-sequence failure leaves partial state. → wrap in `Ecto.Multi` / `Repo.transaction`.
 - Side effects (email, Oban job, HTTP call) fired inside the transaction — a later rollback can't recall them. → enqueue after commit.
 
