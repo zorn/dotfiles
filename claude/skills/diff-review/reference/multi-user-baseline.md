@@ -2,7 +2,7 @@
 
 Phoenix LiveView–first. The concern *names* — stale read, lost update, unhandled conflict — transfer off Phoenix even where the specific *fix* does not.
 
-Read every write path in the diff as if two people act on the same resource at once, one in each browser tab, each holding the struct their page loaded. The items fall into three groups, each keyed to a signal in the diff. Context functions that write trigger the server group. LiveViews and controllers that call them trigger the UI group. Either one triggers the test group.
+Read every write path in the diff as if two people act on the same resource at once, one in each browser tab, each holding the struct their page loaded. The items fall into three groups. The server group applies to context functions that write. The UI group applies to every LiveView and controller that calls them, whether the diff changes it or not. The test group applies to both.
 
 ## Server: the stored row decides
 
