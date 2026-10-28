@@ -1,6 +1,6 @@
 ---
 name: diff-review
-description: Review the diff since a fixed point along five axes — Standards (does it follow this repo's documented standards?), Spec (does it do what the originating issue asked?), Prose (are the comments and docs grammatical, and no longer than they need to be?), Tests (whenever the diff touches code — do the tests flake, do they observe the new behavior, do they cost more than they need?), and Database (only when the diff touches the DB — migration safety, transaction consistency, query performance). Use when the user wants changes reviewed, or asks to "review since X".
+description: Review the diff since a fixed point along six axes — Standards, Spec, Prose, Tests, Database, and Multi-user. Use when the user wants changes reviewed, or asks to "review since X".
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
@@ -18,8 +18,9 @@ Multi-axis review of the diff between `HEAD` and a fixed point the user supplies
 - **Prose** — are the comments and docs grammatical, and does every function doc and inline comment earn its length?
 - **Tests** — whenever the diff touches code: do the tests flake, do they observe the new behavior, and do they cost more than the behavior needs?
 - **Database** — only when the diff touches the DB: are migrations safe to deploy, are dependent writes transactional, and do queries scale?
+- **Multi-user** — only when the diff touches a write path: if two people act on the same resource at once, does the stored row decide, and does the losing tab recover?
 
-The first three always run. Tests runs whenever the diff touches code, and Database only when the diff shows database signals, since most changes don't touch the DB. The axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
+The first three always run. Tests runs whenever the diff touches code. Database runs only when the diff shows database signals, and Multi-user only when it shows a write path, since most changes touch neither. The axes run as **parallel sub-agents** so they don't pollute each other's context, then this skill aggregates their findings.
 
 ## Process
 
@@ -113,15 +114,21 @@ You are done with this step once you have decided the axis runs or is skipped.
 
 ### 6. Decide whether the Database axis runs
 
-Scan the diff for **database signals** — migration files, `schema do`, `Repo.`/query calls, raw SQL. If none appear, the Database axis is skipped; note this in the final report and move on. If any appear, the Database sub-agent runs in step 7, and its baseline comes from `reference/database-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it.
+Scan the diff for **database signals** — migration files, `schema do`, `Repo.`/query calls, raw SQL. If none appear, the Database axis is skipped; note this in the final report and move on. If any appear, the Database sub-agent runs in step 8, and its baseline comes from `reference/database-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it.
 
 The baseline is not inline here, unlike the smell, prose, and tests baselines, because it loads only on the reviews that touch the DB. Its migration-safety concern defers to project tooling: the baseline file carries the deferral rule, so the sub-agent decides it — you only gate on whether the diff touches the DB at all.
 
 You are done with this step once you have decided the axis runs or is skipped, and — if it runs — have the baseline text in hand to paste.
 
-### 7. Spawn the sub-agents in parallel
+### 7. Decide whether the Multi-user axis runs
 
-Send a single message with one `Agent` tool call per axis that runs — Standards and Prose always, Spec unless step 2 found no spec, Tests unless step 5 found no code changes, Database when step 6 found database signals. Use the `general-purpose` subagent for all of them.
+Scan the diff for a **write path** — `Repo.insert`, `Repo.update`, `Repo.delete`, `Repo.update_all`, `Ecto.Multi`, a changeset applied to a stored record, raw SQL that writes, the equivalent write call on another stack, or any LiveView `handle_event` or controller action. A read-only diff skips the axis; note this in the final report. If a write path appears, the Multi-user sub-agent runs in step 8, and its baseline comes from `reference/multi-user-baseline.md` — read that file and paste it into the sub-agent prompt, since the sub-agent has no other access to it. The reasoning behind the axis is in [ADR 0007](https://github.com/zorn/dotfiles/blob/main/docs/adr/0007-multi-user-review-axis.md).
+
+You are done with this step once you have decided the axis runs or is skipped, and — if it runs — have the baseline text in hand to paste.
+
+### 8. Spawn the sub-agents in parallel
+
+Send a single message with one `Agent` tool call per axis that runs — Standards and Prose always, Spec unless step 2 found no spec, Tests unless step 5 found no code changes, Database when step 6 found database signals, Multi-user when step 7 found a write path. Use the `general-purpose` subagent for all of them.
 
 **Standards sub-agent prompt** — include:
 
@@ -155,11 +162,17 @@ If the spec is missing, skip the Spec sub-agent and note this in the final repor
 - The **database baseline from step 6** pasted in full — the sub-agent has no other access to it.
 - The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <migration|transaction|performance> | <the hunk it turns on, at most two lines>`. Apply each baseline concern where its signal appears in the diff. Every finding is a judgment call, and a documented repo standard overrides the baseline. When the baseline's migration-safety deferral applies, skip that concern and report the single line `- | migration safety enforced by tooling — skipped | migration | -`. Return nothing if you find nothing."
 
-### 8. Present the findings as a decision list
+**Multi-user sub-agent prompt** (only when step 7 found a write path) — include:
+
+- The full diff command and commit list.
+- The **multi-user baseline from step 7** pasted in full — the sub-agent has no other access to it.
+- The brief: "Report a flat list of findings, nothing else — no preamble, no summary. One finding per entry, each on its own line as `<file>:<line or -> | <claim in one line> | <server|ui|test> | <the hunk it turns on, at most two lines>`. Each `server` and `ui` claim names the second user and what they do between the first user's read and write. Read the callers of a changed context function, and the context functions a changed LiveView calls, even where they sit outside the diff — a conflict error added on one side is a crash on the other. Every finding is a judgment call, and a documented repo standard overrides the baseline. Return nothing if you find nothing."
+
+### 9. Present the findings as a decision list
 
 The sub-agents return raw finding lines, not a report. Never pass those through and never expand them back into narrative — a wall of prose findings buries the only thing the user actually has to do, which is decide what gets fixed.
 
-Turn each line into a numbered item answerable at a glance, following the presentation contract in the global instructions. Keep the axes under separate `## 📏 Standards`, `## 🎯 Spec`, `## ✍️ Prose`, `## 🧪 Tests`, and `## 🛢️ Database` headings, leaving out the heading of any axis that skipped, and do not merge or rerank across them (see _Why separate the axes_), but number continuously so a reply can say "3 and 7" without naming an axis.
+Turn each line into a numbered item answerable at a glance, following the presentation contract in the global instructions. Keep the axes under separate `## 📏 Standards`, `## 🎯 Spec`, `## ✍️ Prose`, `## 🧪 Tests`, `## 🛢️ Database`, and `## 👥 Multi-user` headings, leaving out the heading of any axis that skipped, and do not merge or rerank across them (see _Why separate the axes_), but number continuously so a reply can say "3 and 7" without naming an axis.
 
 Each item leads with a colored dot for the recommendation, so the eye lands on what needs a decision and skims the rest. The three recommendations, each an action addressed to the user:
 
@@ -181,7 +194,7 @@ The contract covers the numbering, the recommendation, and silence-as-agreement.
 - **List the findings you would ⚪ Keep.** Dropping one you disagree with silently hides that the axis looked at all; Keep with a reason is the honest form.
 - **Then act on exactly what came back.** A reply of "2 keep, 5 let's talk" means fixing the rest without re-asking.
 
-End with one line per axis: how many findings, and how many are recommended 🔴 Fix. An axis that did not run gets a line here too, in place of the count — `Spec — skipped, no spec`, `Tests — skipped, no code changes`, or `Database — skipped, no database changes` — so a skip is visible without an empty heading above the fold. No cross-axis winner — that is the reranking the separation exists to prevent. Close the footer with `Correctness — not an axis here; run /code-review`, so the reader is told where that check lives rather than left to assume it ran.
+End with one line per axis: how many findings, and how many are recommended 🔴 Fix. An axis that did not run gets a line here too, in place of the count — `Spec — skipped, no spec`, `Tests — skipped, no code changes`, `Database — skipped, no database changes`, or `Multi-user — skipped, no write paths` — so a skip is visible without an empty heading above the fold. No cross-axis winner — that is the reranking the separation exists to prevent. Close the footer with `Correctness — only races between users are checked here; run /code-review`, so the reader is told where the rest of that check lives rather than left to assume it ran.
 
 ## Why separate the axes
 
@@ -192,5 +205,6 @@ A change can pass one axis and fail another:
 - Code that is correct and on-spec but buries its intent in verbose or ungrammatical comments → **Standards and Spec pass, Prose fail.**
 - Code that is clean, on-spec, and clearly written but ships with a test that sleeps its way to green → **the other three pass, Tests fails.**
 - Code that is clean, on-spec, clearly written, and honestly tested but N+1s every request under load → **the other four pass, Database fails.**
+- Code that is clean, on-spec, clearly written, honestly tested, and fast under load but trusts the struct a tab loaded an hour ago → **the other five pass, Multi-user fails.**
 
 Reporting them separately stops one axis from masking another.

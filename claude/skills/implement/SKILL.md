@@ -95,6 +95,6 @@ Report which comments you applied and which you declined. A summary listing only
 
 Say what the change needs beyond merging — a re-link, a reload, a restart, or a doc that now describes it wrongly — or that it needs nothing. The user should not have to ask.
 
-Then remind the user they may want to run `/code-review`. It hunts correctness bugs, which none of `diff-review`'s axes target — so it is worth a look even though step 4 already reviewed the diff. Leave it as a line in the report, not a step to run yourself; the user triggers it when they are ready.
+Then remind the user they may want to run `/code-review`. It hunts correctness bugs, which `diff-review` targets only for races between users — so it is worth a look even though step 4 already reviewed the diff. Leave it as a line in the report, not a step to run yourself; the user triggers it when they are ready.
 
 Merging is the user's call. Do not merge.
