@@ -4,7 +4,7 @@ Primary sources only: repositories, package registries, and the source code each
 
 ## Bottom line
 
-**Keep `bin/check-skills`. No tool replaces it, and the official ones would reject this repo's skills.** The spec's reference validator, `skills-ref`, and both vendors' `quick_validate.py` scripts refuse any frontmatter field outside the six the spec defines. That fails 11 of the 19 skills here, because they use Claude Code's `disable-model-invocation` and `argument-hint`. Claude Code's own `claude plugin validate` accepts a bare skills directory, but in a probe it caught only a missing description and passed nine other broken skills. None of the tools checks that a link stays inside the skill directory, compiles `scripts/*.py`, or checks spelling.
+**Keep `bin/check-skills`. No tool replaces it, and the official ones would reject this repo's skills.** The spec's reference validator, `skills-ref`, and both vendors' `quick_validate.py` scripts refuse any frontmatter field outside the six the spec defines. That fails 11 of the 19 skills here, because they use Claude Code's `disable-model-invocation` and `argument-hint`. Claude Code's own `claude plugin validate` accepts a bare skills directory, but in a probe it caught only a missing description and passed nine other broken skills. None of the tools compiles `scripts/*.py` or checks spelling. Only [skillscheck](https://github.com/Swival/skillscheck/blob/0.9.7/skillscheck/checks/quality.py#L510-L554) notices a link that leaves the skill directory, and only as an informational note for Markdown under `references/`, `scripts/` and `assets/`, not in `SKILL.md` itself.
 
 The one tool worth a look is [agnix](https://github.com/agent-sh/agnix), a maintained Rust linter that covers the spec rules plus Claude Code's own skill fields. It is a third-party, pre-1.0 tool that ships constantly, so it fits as an occasional manual audit, not as a CI gate.
 
@@ -49,12 +49,14 @@ A search turns up a dozen or more SKILL.md linters on npm, PyPI and GitHub, most
 | [skillmd](https://github.com/skillmds/skillmd) | npm, GitHub Action | `core-v1.0.1` on 2026-10-26 | Lint engine behind a skills registry |
 | [skillscheck](https://github.com/Swival/skillscheck) | `uvx skillscheck` | 0.9.7 on 2026-08-20, 7 stars | Python; needs PyYAML, click, tiktoken ([pyproject.toml](https://github.com/Swival/skillscheck/blob/main/pyproject.toml)) |
 
-**agnix is the only one I read in depth, because it is the only one both maintained and broad.** Its rule catalog ([knowledge-base/rules.json](https://github.com/agent-sh/agnix/blob/main/knowledge-base/rules.json), version 1.1.0, updated 2026-10-17) and validator source ([rules/skill/mod.rs](https://github.com/agent-sh/agnix/blob/main/crates/agnix-core/src/rules/skill/mod.rs)) cover:
+**agnix is the one I read in depth, because it is the only one both maintained and broad.** Its rule catalog ([knowledge-base/rules.json](https://github.com/agent-sh/agnix/blob/main/knowledge-base/rules.json), version 1.1.0, updated 2026-10-17) and validator source ([rules/skill/mod.rs](https://github.com/agent-sh/agnix/blob/main/crates/agnix-core/src/rules/skill/mod.rs)) cover:
 
 - The spec rules: name format and edge/double hyphens (AS-004 to AS-006), name matches directory (AS-017), description 1 to 1024 characters (AS-008), compatibility length (AS-011), `metadata` must be a string-to-string map (in AS-001/AS-016), parse errors (AS-016), body over 500 lines (AS-012), reference chains too deep (AS-013).
 - Broken relative Markdown links (REF-002) ([rules.json](https://github.com/agent-sh/agnix/blob/main/knowledge-base/rules.json)).
 - Claude Code's own fields: an unknown field measured against Claude Code's documented list (CC-SK-017), and value checks for `model`, `context`, `effort`, `shell`, `paths`, `hooks`, and the `disable-model-invocation` and `user-invocable` types (CC-SK-001 to CC-SK-020) ([rules.json](https://github.com/agent-sh/agnix/blob/main/knowledge-base/rules.json)).
 - Taste rules `bin/check-skills` does not attempt, such as a description lacking a when-to-use trigger (AS-020) or not in the third person (CC-SK-032).
+
+**The target changes what it checks.** With `--target claude-code`, agnix follows Claude Code's looser rules. On agnix 0.59.3, a probe skill whose name did not match its directory, a 1112-character description, and a numeric `metadata` value all passed under that target. The generic target flagged the description length and the metadata (observed). The table below gives both.
 
 It treats any file named `SKILL.md` as a skill, whatever its directory ([detection.rs](https://github.com/agent-sh/agnix/blob/main/crates/agnix-core/src/file_types/detection.rs)), so `agnix claude/skills` finds this repo's skills.
 
@@ -62,14 +64,14 @@ It treats any file named `SKILL.md` as a skill, whatever its directory ([detecti
 
 ## 5. Point by point
 
-| `bin/check-skills` check | `skills-ref` | `quick_validate.py` | `claude plugin validate` | agnix |
+| `bin/check-skills` check | `skills-ref` | `quick_validate.py` | `claude plugin validate` | agnix (generic / `--target claude-code`) |
 |---|---|---|---|---|
 | Name format | Yes | Yes | No (observed) | Yes |
-| Name matches directory | Yes | No | No (observed) | Yes |
-| Description length | Yes | Yes | Only missing (observed) | Yes |
+| Name matches directory | Yes | No | No (observed) | Generic yes (AS-017); Claude Code no (observed) |
+| Description length | Yes | Yes | Only missing (observed) | Generic yes (observed); Claude Code no (observed) |
 | Field-name typos | Rejects every non-spec field | Rejects every non-spec field | No (observed) | Unknown against Claude Code's list |
 | Compatibility length | Yes | Anthropic yes; OpenAI rejects the field | No (observed) | Yes |
-| `metadata` is a string map | Coerces, no error | No | No (observed) | Yes |
+| `metadata` is a string map | Coerces, no error | No | No (observed) | Generic yes (observed); Claude Code no (observed) |
 | A ` #` that silently truncates a value as a comment | No, full YAML parser | No, PyYAML | No | No, serde_yaml |
 | Relative link resolves | No | No | No (observed) | Yes (REF-002) |
 | Link stays inside the skill directory | No | No | No (observed) | Not found in its rules |
@@ -77,7 +79,7 @@ It treats any file named `SKILL.md` as a skill, whatever its directory ([detecti
 | British spellings | No | No | No | No |
 | Install for CI | PyPI, two deps | Copy script, PyYAML | Claude Code binary | npm, pip, brew, cargo, Action |
 
-Two rows matter most. Every other tool parses frontmatter with a full YAML library, so none flags the ` #` comment that truncates a description, which is the reason the docstring gives for its narrow parser. And the containment check exists because each skill is linked into `~/.claude/skills` on its own; no general tool can know that.
+Two rows matter most. Every other tool parses frontmatter with a full YAML library, so none flags the ` #` comment that truncates a description, which is the reason the docstring gives for its narrow parser. And the containment check exists because each skill is linked into `~/.claude/skills` on its own. skillscheck reports an escaping link only as information, and only outside `SKILL.md`, so none of these tools fails the build on one.
 
 ## Recommendation
 
@@ -85,6 +87,6 @@ Two rows matter most. Every other tool parses frontmatter with a full YAML libra
 
 - `skills-ref` and the `quick_validate.py` scripts would fail 11 of 19 skills on fields Claude Code documents, and still miss links, scripts and spelling.
 - `claude plugin validate` adds nothing a `bin/check-skills` pass does not already cover. It also needs Claude Code installed on the runner.
-- agnix is the only tool that adds coverage, mostly Claude Code value checks such as a misspelled `effort` level. It would be one more curl'd pin and checksum that Dependabot cannot see, on a pre-1.0 tool that releases every few days.
+- agnix adds the most coverage, mostly Claude Code value checks such as a misspelled `effort` level. Others add narrower checks; skillscheck, for example, [reports a link to a heading that does not exist](https://github.com/Swival/skillscheck/blob/0.9.7/skillscheck/checks/quality.py#L368-L410), which `bin/check-skills` does not check. It would be one more curl'd pin and checksum that Dependabot cannot see, on a pre-1.0 tool that releases every few days.
 
-An occasional manual `npx agnix --target claude-code claude/skills` gets that coverage without the upkeep, with any finding worth keeping ported into `CASES`. The first such run, on 2026-10-27, came back clean. The docstring's "it is not on PyPI" is now out of date and is worth a one-line fix; the "demonstration only" reasoning still stands.
+An occasional manual `npx agnix --target claude-code claude/skills` gets that coverage without the upkeep. That target skips the name, description-length and metadata checks, but `bin/check-skills` already covers those, with any finding worth keeping ported into `CASES`. The first such run, on 2026-10-27, came back clean. The docstring's "it is not on PyPI" is now out of date and is worth a one-line fix; the "demonstration only" reasoning still stands.
