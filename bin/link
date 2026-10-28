@@ -143,6 +143,11 @@ link_path "$repo_root/worktrunk/config.toml" \
 link_path "$repo_root/worktrunk/hooks" \
   "$HOME/.config/worktrunk/hooks" 'worktrunk/hooks'
 
+# Herdr's config file, not ~/.config/herdr itself: Herdr keeps its sockets,
+# logs, and session snapshots there.
+link_path "$repo_root/herdr/config.toml" \
+  "$HOME/.config/herdr/config.toml" 'herdr/config.toml'
+
 # fish's config file, not ~/.config/fish itself: fish writes fish_variables
 # there, and installers drop generated functions and completions beside it.
 link_path "$repo_root/fish/config.fish" \

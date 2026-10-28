@@ -28,6 +28,10 @@ My Claude Code `settings.json`, `keybindings.json`, and status line script. The 
 
 The global config for [worktrunk](https://worktrunk.dev) (`wt`), the tool I create and remove git worktrees with. It lets parallel coding agents each run a Phoenix app with its own port and databases. Its hooks ready each new worktree and tear it down again, and a `wt herdr` alias opens a new worktree in [Herdr](https://herdr.dev). [`worktrunk/README.md`](worktrunk/README.md) is the runbook: setting up a machine, the create, work, and remove flow, and how to opt a Phoenix app in.
 
+### Herdr config — `herdr/`
+
+My [Herdr](https://herdr.dev) `config.toml`: the theme, mouse capture, and onboarding turned off. Only that file is tracked. Herdr keeps its sockets, logs, and session snapshots in the same directory, and those are machine state.
+
 ### fish config — `fish/`
 
 My [fish](https://fishshell.com) `config.fish`: PATH setup, including asdf's shims. Only that one file is tracked. Fish writes `fish_variables` into the same directory, and installers add their own generated functions and completions there. Those files are machine state, so on a fresh machine they come back from the tools that write them:
