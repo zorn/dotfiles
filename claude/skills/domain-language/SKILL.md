@@ -84,7 +84,7 @@ handful of words that aren't.
 The file is a glossary and nothing else. Not a spec, not a scratch pad, not a
 home for implementation decisions. Keep it free of implementation detail: a
 definition says what a thing *is*, not how it is stored or which module owns
-it.
+it. The one exception is the `_Schema_` line, described under Format.
 
 When a term doesn't belong, say so and leave it out — "that's a general
 software term rather than your domain language" is a complete answer. Two
@@ -104,7 +104,8 @@ split shouldn't be given one.
 ## Language
 
 **Order**:
-A customer's request to buy, once submitted and priced.
+A customer's request to buy, once submitted and priced.\
+_Schema_: `Shop.Orders.Order`\
 _Avoid_: Purchase, transaction
 
 **Report range**:
@@ -116,6 +117,10 @@ _range_, not "window," because a window in this app is a native desktop window
 **Be opinionated.** When several words exist for one concept, pick the best
 and list the rest under `_Avoid_`.
 
+End every line before a `_Schema_` or `_Avoid_` line with a backslash, as the
+Order entry does. Markdown joins consecutive lines into one paragraph, so
+without that hard break the label runs onto the end of the line above.
+
 **`_Avoid_` is for a bare rejected synonym** — the case where there's nothing
 to say beyond "we picked one." When the rejection has a *reason*, write the
 reason into the definition instead, as the Report range entry above does.
@@ -123,6 +128,18 @@ reason into the definition instead, as the Report range entry above does.
 
 **Keep definitions tight.** One or two sentences. Define what the thing IS.
 Longer is warranted only when a boundary is genuinely subtle.
+
+**Name the schema** that carries a term, when the code has one, in a
+`_Schema_` line after the definition: the module name in backticks, plus at
+most one distinguishing value. Add that value only when several terms share
+one schema, and make it the one value that sets this term apart —
+"`Accounts.User`, with the `admin` role." The line is a pointer from the word
+to the code. A new developer can read down the glossary and discover which
+modules carry the domain, and a rename of either the word or the module shows
+up here. It is not a license for more: never
+list fields, tables, or behavior. Those are the implementation detail that
+turns a glossary into a running spec. Leave the line out for a term the code
+does not model, such as an outside company or system.
 
 **Link to the decision that settled a term** when there is one. That link is
 the connective tissue between this file and `docs/adr/` — it turns a
@@ -146,7 +163,8 @@ definitions pointing at the entry:
 
 **First Preference**:
 The highest-ranked answer a voter gives when their vote is captured (see
-Sharp Edges #1).
+Sharp Edges #1).\
+_Schema_: `RankedVoting.RankedAnswer`
 
 ## Sharp Edges
 

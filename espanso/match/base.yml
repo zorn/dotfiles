@@ -24,6 +24,9 @@ matches:
   - trigger: "--ec"
     replace: "https://www.elixirclub.org"
 
+  - trigger: "--ae"
+    replace: "Anything else before I close the session?"
+
   - trigger: "--standup"
     replace: "❤️ **Feeling**: \n✅ **Accomplishments:** \n🥅 **Goals**: \n🆘 **Help:** "
 
