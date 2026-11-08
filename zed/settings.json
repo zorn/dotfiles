@@ -126,13 +126,14 @@
     "tailwindcss-language-server": {
       "settings": {
         "includeLanguages": {
+          "elixir": "html",
           "heex": "html",
         },
         "experimental": {
           "classRegex": [
             "class=\"([^\"]*)\"",
             "class='([^']*)'",
-            ["class=\\{\\[((?:\"[^\"]*\"|[^\\]\"])*)\\]", "\"([^\"]*)\""],
+            ["class=\\{\\[((?:\"[^\"]*\"|\\[[^\\]]*\\]|[^\\]\"])*)\\]", "\"([^\"]*)\""],
           ],
         },
       },

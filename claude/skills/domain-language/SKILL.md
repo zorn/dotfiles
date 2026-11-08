@@ -130,12 +130,13 @@ reason into the definition instead, as the Report range entry above does.
 Longer is warranted only when a boundary is genuinely subtle.
 
 **Name the schema** that carries a term, when the code has one, in a
-`_Schema_` line after the definition: the module name in backticks and
-nothing else. When several terms share one schema, add the one value that
-sets this term apart — "`Accounts.User`, with the `admin` role." The line is
-a pointer from the word to the code. A new developer can read down the
-glossary and discover which modules carry the domain, and a rename of either
-the word or the module shows up here. It is not a license for more: never
+`_Schema_` line after the definition: the module name in backticks, plus at
+most one distinguishing value. Add that value only when several terms share
+one schema, and make it the one value that sets this term apart —
+"`Accounts.User`, with the `admin` role." The line is a pointer from the word
+to the code. A new developer can read down the glossary and discover which
+modules carry the domain, and a rename of either the word or the module shows
+up here. It is not a license for more: never
 list fields, tables, or behavior. Those are the implementation detail that
 turns a glossary into a running spec. Leave the line out for a term the code
 does not model, such as an outside company or system.
@@ -162,7 +163,8 @@ definitions pointing at the entry:
 
 **First Preference**:
 The highest-ranked answer a voter gives when their vote is captured (see
-Sharp Edges #1).
+Sharp Edges #1).\
+_Schema_: `RankedVoting.RankedAnswer`
 
 ## Sharp Edges
 
