@@ -26,13 +26,17 @@ mkdir -p "$scratch/bin"
 # --jq <filter>` runs the filter over comments.json, reviews.json, or
 # issue-comments.json in $FAKE_DIR. A missing file reads as an empty list,
 # and a <file>.fail marker makes that endpoint fail.
-# `api user` reports the signed-in login as "me".
+# `api user` reports the signed-in login as "me", or fails when a user.fail
+# marker exists.
 cat >"$scratch/bin/gh" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
 case "$1 $2" in
   'pr checks') cat "$FAKE_DIR/checks.json" ;;
-  'api user') echo '{"login":"me"}' | jq -r "${4:-.}" ;;
+  'api user')
+    [ ! -e "$FAKE_DIR/user.fail" ] || { echo 'HTTP 403' >&2; exit 1; }
+    echo '{"login":"me"}' | jq -r "${4:-.}"
+    ;;
   'api --paginate')
     case "$3" in
       repos/*/pulls/*/comments*) file=comments.json ;;
@@ -103,12 +107,15 @@ expect_settled() {
   fi
 }
 
+# $2 is text the stderr status line must show. It proves the watch saw the
+# state the case names, rather than hanging for some other reason.
 expect_still_watching() {
-  local name="$1"
-  if [ "$(cat "$case_dir/status")" = killed ] && ! grep -qF 'SETTLED' "$case_dir/out"; then
+  local name="$1" saw="$2"
+  if [ "$(cat "$case_dir/status")" = killed ] && ! grep -qF 'SETTLED' "$case_dir/out" &&
+    grep -qF "$saw" "$case_dir/err"; then
     printf '  pass  %s\n' "$name"
   else
-    report_failure "$name" 'the watch still running at the deadline'
+    report_failure "$name" "the watch still running at the deadline, with stderr showing $saw"
   fi
 }
 
@@ -116,14 +123,14 @@ expect_still_watching() {
 # must not end the watch while the review wait is still running.
 new_case review-wait-running
 run_watch 2 WATCH_REVIEW_WAIT=3600
-expect_still_watching 'checks pass and the review wait has not elapsed'
+expect_still_watching 'checks pass and the review wait has not elapsed' 'checks: 1 pass'
 
 # The no-review fallback must still wait for CI, or a green-looking settle
 # would report on checks that have not finished.
 new_case review-wait-over-checks-pending
 echo '[{"name":"build","bucket":"pending","link":"https://example.test/1"}]' >"$case_dir/checks.json"
 run_watch 2 WATCH_REVIEW_WAIT=0
-expect_still_watching 'the review wait has elapsed but checks are pending'
+expect_still_watching 'the review wait has elapsed but checks are pending' 'checks: 1 pending'
 
 # The state file outlives a run, so a re-armed watch already holds ids from
 # the first review. Only a review that arrives during this run may settle it.
@@ -131,21 +138,21 @@ new_case rearmed-after-earlier-review
 echo '[{"id":41,"user":{"login":"Copilot"},"path":"a.sh","line":3,"body":"nit"}]' >"$case_dir/comments.json"
 printf 'c41\nr40\n' >"$case_dir/pr-feedback-seen-owner-repo-7.txt"
 run_watch 2 WATCH_REVIEW_WAIT=3600
-expect_still_watching 'a re-armed watch with only earlier reviews keeps going'
+expect_still_watching 'a re-armed watch with only earlier reviews keeps going' 'checks: 1 pass'
 
 # The agent's own thread replies are not a review. Posted between two runs,
 # they would otherwise settle the re-armed watch before the re-review lands.
 new_case own-replies-between-runs
 echo '[{"id":42,"user":{"login":"me"},"path":"a.sh","line":3,"body":"Fixed."}]' >"$case_dir/comments.json"
 run_watch 2 WATCH_REVIEW_WAIT=3600
-expect_still_watching 'only the agent'"'"'s own replies arrive'
+expect_still_watching 'only the agent'"'"'s own replies arrive' 'checks: 1 pass'
 
 # A failed fetch is not a quiet poll, or the no-review fallback would report
 # "no review arrived" while a review sits unread behind the failing endpoint.
 new_case review-fetch-failing
 touch "$case_dir/reviews.json.fail"
 run_watch 2 WATCH_REVIEW_WAIT=0
-expect_still_watching 'the reviews fetch fails'
+expect_still_watching 'the reviews fetch fails' '(feedback fetch failed) · checks: 1 pass'
 
 new_case no-review
 run_watch 5 WATCH_REVIEW_WAIT=0
@@ -163,5 +170,23 @@ new_case summary-only-review
 echo '[{"id":50,"user":{"login":"Copilot"},"state":"COMMENTED","body":"Looks fine."}]' >"$case_dir/reviews.json"
 run_watch 5 WATCH_REVIEW_WAIT=3600
 expect_settled 'a review summary with no inline comments arrives' 'WATCH SETTLED — checks: 1 pass; 0 inline, 1 review(s), 0 comment(s)'
+
+# An approval with no body is a review even with no inline comments, so the
+# watch must not wait it out and report "no review arrived".
+new_case bodyless-approval
+echo '[{"id":60,"user":{"login":"a-reviewer"},"state":"APPROVED","body":""}]' >"$case_dir/reviews.json"
+run_watch 5 WATCH_REVIEW_WAIT=3600
+expect_settled 'an approval with no body arrives' 'WATCH SETTLED — checks: 1 pass; 0 inline, 1 review(s), 0 comment(s)'
+
+# Without the signed-in login, the agent's own replies count as reviews, so
+# the watch must say so where its progress is read.
+new_case login-lookup-failing
+touch "$case_dir/user.fail"
+run_watch 5 WATCH_REVIEW_WAIT=0
+if grep -qF 'could not look up the signed-in account' "$case_dir/err"; then
+  printf '  pass  %s\n' 'a failed login lookup is reported on stderr'
+else
+  report_failure 'a failed login lookup is reported on stderr' 'a stderr line naming the failed lookup'
+fi
 
 exit "$failed"

@@ -105,6 +105,10 @@ reviews_arrived=0
 
 status "watching $REPO#$PR — state file $STATE"
 end_status_line
+if [ -z "$ME" ]; then
+  status "could not look up the signed-in account, so your own replies count as reviews"
+  end_status_line
+fi
 
 while true; do
   polls=$((polls + 1))
@@ -134,9 +138,12 @@ while true; do
     gh api --paginate "repos/$REPO/pulls/$PR/comments?per_page=100" \
       --jq '.[] | "c\(.id)|\(.user.login) — \(.path):\(.line // .original_line // 0) — id=\(.id) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
-    # Review summaries (Copilot posts its overview as one of these).
+    # Review summaries (Copilot posts its overview as one of these). A
+    # bodyless COMMENTED review is skipped, because its inline comments
+    # already report it. A bodyless approval or change request has nothing
+    # else to report it.
     gh api --paginate "repos/$REPO/pulls/$PR/reviews?per_page=100" \
-      --jq '.[] | select((.body // "") != "") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
+      --jq '.[] | select((.body // "") != "" or .state != "COMMENTED") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
     # Top-level PR conversation.
     gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
