@@ -25,3 +25,7 @@ Portions of claude/skills/ are derived from https://github.com/mattpocock/skills
 (MIT License, Copyright (c) 2026 Matt Pocock). Each derived skill records the
 upstream skill it came from in its SKILL.md frontmatter, under `metadata`.
 
+
+Portions of claude/skills/ are derived from https://github.com/paraxialio/skills
+(MIT License, Copyright (c) 2026 Paraxial.io). Each derived skill records the
+upstream skill it came from in its SKILL.md frontmatter, under `metadata`.
