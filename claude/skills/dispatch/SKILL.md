@@ -126,4 +126,6 @@ Release is done when every named worktree is removed or reported with its reason
 
 3. **Remove.** Show the list, then remove each candidate without asking, as the removal rule says, with `wt remove --foreground <branch>`. Its work is already in `main`, and `wt remove` refuses uncommitted changes.
 
-Clean is done when every candidate is removed or reported with its reason for staying. Report the skipped worktrees, so the user knows to run `/dispatch clean` again.
+4. **Offer the leftover branches.** Step 2's dry run also lists rows with `kind` `branch_only`: merged local branches with no worktree. The prune check alone qualifies them. The merged-PR check protects a new worktree's agent, and a branch with no worktree has no agent. List them, and wait for "go", because the deletion cannot be undone. Then delete each one with `git branch -D <branch>`. Squash-merged branches are not ancestors of `main`, so `-d` refuses them. Never run a live `wt step prune` instead: it removes every row it lists, including the fresh worktrees step 2 skips.
+
+Clean is done when every candidate is removed or reported with its reason for staying, and every leftover branch is deleted or kept at the user's word. Report the skipped worktrees, so the user knows to run `/dispatch clean` again.
