@@ -23,6 +23,7 @@ GitHub numbers issues and pull requests from one sequence, so a bare number is o
 - **Follow the runbook.** [`worktrunk/README.md`](https://github.com/zorn/dotfiles/blob/main/worktrunk/README.md) covers `wt herdr`, `wt herdr-resume`, `wt remove`, and what to do when a removal stops.
 - **Ask Herdr about agents.** Run `herdr agent list` before you say anything about an agent. It gives each agent's `cwd` and `agent_status`. Your memory of what you started is not evidence of what is running.
 - **Refresh before you report a remote branch.** Run `git fetch --prune` before you say whether a branch exists on GitHub. `gh` reads pull requests from GitHub directly.
+- **Remove one worktree at a time, with its agent idle.** Release and Clean both remove this way. Just before each removal, check `herdr agent list`, and skip the worktree when its agent is `working` or `blocked`: removal closes the workspace and kills the agent, along with any question it is waiting on. Run `wt remove --foreground`, so its result is known before you go on. When it refuses, follow its message. If a Herdr workspace stays open after a removal, close it with `herdr workspace close <id>`.
 
 ## Launch
 
@@ -100,11 +101,11 @@ Release removes a worktree whose work is safe on GitHub, so the user can move on
 
    - **A pull request holds its work:** a pull request for its branch, in any state, has a `headRefOid` that equals the worktree's `HEAD` or descends from it. That proves GitHub has every commit, even when a later push moved the pull request on.
    - **Its tree is clean:** `git -C <path> status --porcelain` prints nothing.
-   - **Its agent is idle:** `herdr agent list` shows no agent with its `cwd` in the worktree that is `working` or `blocked`. Removal kills the agent, along with any question it is waiting on.
+   - **Its agent is idle:** `herdr agent list` shows no agent with its `cwd` in the worktree that is `working` or `blocked`.
 
    `scripts/worktree-status.sh <branch>` applies all three, and its `releasable` field is `yes` or the first reason that fails. Leave any worktree that fails a check, and report the reason. Never push, commit, or stash to make one pass, and never pass `-f`. Those choices are the user's.
 
-3. **Wait for "go", then remove.** Show the list. When the repo has per-worktree databases, say that releasing drops them. Wait for "go", because `-D` deletes local branches that are not merged. Then, for each one in turn, run step 2's three checks again with `scripts/worktree-status.sh <branch>`. An idle agent can wake during the wait, for example on review feedback, and commit without pushing. A clean tree does not stop `wt remove`, so `-D` would delete that commit. Skip any worktree that now fails, and report why. Otherwise run `wt remove --foreground -D <branch>`. When `wt remove` refuses, follow its message. If a Herdr workspace stays open after a removal, close it with `herdr workspace close <id>`.
+3. **Wait for "go", then remove.** Show the list. When the repo has per-worktree databases, say that releasing drops them. Wait for "go", because `-D` deletes local branches that are not merged. Then, for each one in turn, run step 2's three checks again with `scripts/worktree-status.sh <branch>`. An idle agent can wake during the wait, for example on review feedback, and commit without pushing. A clean tree does not stop `wt remove`, so `-D` would delete that commit. Skip any worktree that now fails, and report why. Otherwise remove it as the removal rule says, with `wt remove --foreground -D <branch>`.
 
 Release is done when every named worktree is removed or reported with its reason for staying. For each released worktree whose pull request is open, tell the user that `/dispatch <issue>` resumes it, or `/dispatch <PR>` for a PR row.
 
@@ -121,6 +122,6 @@ Release is done when every named worktree is removed or reported with its reason
 
    A worktree with no commits also appears in prune, as `same commit as`, or as `ancestor of` once `main` moves on. Its agent has likely just started. Only a merged pull request at the worktree's own `HEAD` tells a finished worktree from a new one, because a follow-up branch can reuse a merged branch's name. Leave any worktree that fails either check, including one whose pull request lookup fails, and report it with its reason.
 
-3. **Remove.** Show the list, then remove each candidate without asking: its work is already in `main`, and `wt remove` refuses uncommitted changes. For each one in turn, check `herdr agent list` first. Skip it when its agent is `working` or `blocked`, because removal closes the workspace and kills the agent, along with any question it is waiting on. Otherwise run `wt remove --foreground <branch>`, so its result is known before you go on. When `wt remove` refuses, follow its message. If a Herdr workspace stays open after a removal, close it with `herdr workspace close <id>`.
+3. **Remove.** Show the list, then remove each candidate without asking, as the removal rule says, with `wt remove --foreground <branch>`. Its work is already in `main`, and `wt remove` refuses uncommitted changes.
 
 Clean is done when every candidate is removed or reported with its reason for staying. Report the skipped worktrees, so the user knows to run `/dispatch clean` again.
