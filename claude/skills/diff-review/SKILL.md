@@ -1,6 +1,6 @@
 ---
 name: diff-review
-description: Review the diff since a fixed point along six axes — Standards, Spec, Prose, Tests, Database, and Multi-user. Use when the user wants changes reviewed, or asks to "review since X".
+description: Review the diff since a fixed point along separate axes. Use when the user wants changes reviewed, asks to "review since X", or another skill needs a pre-PR review.
 license: MIT
 metadata:
   forked-from: https://github.com/mattpocock/skills
