@@ -11,6 +11,7 @@
 # commit is missing here. It changes nothing else. Each row:
 #
 #   label       the Herdr workspace label, or null
+#   workspace_id  the Herdr workspace id, or null; Release closes it by this
 #   branch      the worktree's branch
 #   path        the worktree's path
 #   head        the worktree's HEAD commit
@@ -22,7 +23,9 @@
 #   checks      {pass, fail, pending, skipping, cancel} counts, "unavailable"
 #               when the lookup failed, or null with no PR
 #   dirty       the number of `git status --porcelain` lines
-#   releasable  "yes", or the first reason Release would refuse it
+#   releasable  "yes", or the first reason Release would refuse it. An agent
+#               counts as idle only when Herdr says idle or done, so unknown
+#               and any newer status block a release.
 
 set -euo pipefail
 
@@ -45,6 +48,17 @@ out="[]"
 while IFS=$'\t' read -r path branch; do
   [ -n "$path" ] || continue
   [ -z "$only" ] || [ "$branch" = "$only" ] || continue
+
+  workspace_id="$(jq --arg p "$path" '[.result.workspaces[] | select(.worktree.checkout_path == $p) | .workspace_id][0]' <<<"$workspaces_json")"
+
+  # A directory deleted without `git worktree prune` is still listed. Report it
+  # rather than letting git fail the whole table.
+  if [ ! -d "$path" ]; then
+    out="$(jq --argjson ws "$workspace_id" --arg branch "$branch" --arg path "$path" \
+      '. + [{label: null, workspace_id: $ws, branch: $branch, path: $path, head: null, agents: [],
+             pr: null, checks: null, dirty: null, releasable: "worktree directory missing"}]' <<<"$out")"
+    continue
+  fi
 
   head="$(git -C "$path" rev-parse HEAD)"
   dirty="$(git -C "$path" status --porcelain | wc -l | tr -d ' ')"
@@ -97,14 +111,14 @@ while IFS=$'\t' read -r path branch; do
   releasable="$(jq -n --argjson held "$held" --argjson agents "$agents" --arg dirty "$dirty" '
       if ($held | length) == 0 then "no pull request holds HEAD"
       elif $dirty != "0" then "uncommitted changes"
-      elif any($agents[]; .status == "working" or .status == "blocked") then "agent is working or blocked"
+      elif any($agents[]; .status != "idle" and .status != "done") then "agent is not idle"
       else "yes" end')"
 
   out="$(jq \
-    --argjson label "$label" --arg branch "$branch" --arg path "$path" --arg head "$head" \
+    --argjson label "$label" --argjson ws "$workspace_id" --arg branch "$branch" --arg path "$path" --arg head "$head" \
     --argjson agents "$agents" --argjson pr "$pr" --argjson checks "$checks" \
     --argjson dirty "$dirty" --argjson releasable "$releasable" \
-    '. + [{label: $label, branch: $branch, path: $path, head: $head, agents: $agents,
+    '. + [{label: $label, workspace_id: $ws, branch: $branch, path: $path, head: $head, agents: $agents,
            pr: $pr, checks: $checks, dirty: $dirty, releasable: $releasable}]' <<<"$out")"
 done <<<"$rows"
 

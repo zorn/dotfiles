@@ -123,7 +123,8 @@ fi
 my_prs="$(gh pr list --state open --author @me --limit 200 --json number,headRefName,isCrossRepository |
   jq --arg p "$prefix" 'map(select(.headRefName | startswith($p)))')"
 # Any other local branch or worktree for the issue, such as one with an older
-# slug. The arguments are branches that do not count.
+# slug. The arguments are branches that do not count. Before a resume, only
+# the released PR's own branch is exempt: the planned branch counts too.
 other_local() {
   { git branch --list "$prefix*" --format='%(refname:short)'; grep -F "$prefix" <<<"$worktree_branches" || true; } |
     grep -vxF -e "$1" -e "${2:-$1}" | head -n 1 || true
@@ -159,8 +160,8 @@ elif [ -n "$dispatched" ]; then
 elif [ "${#resumable[@]}" -gt 1 ]; then
   verdict=skip reason="several open PRs of mine are for issue #$issue; release or close all but one"
 elif [ "${#resumable[@]}" -eq 1 ] && read -r number head_ref <<<"${resumable[0]}" &&
-  [ -n "$(other_local "$head_ref" "$branch")" ]; then
-  verdict=skip reason="branch $(other_local "$head_ref" "$branch") for issue #$issue exists here beside released PR #$number"
+  [ -n "$(other_local "$head_ref")" ]; then
+  verdict=skip reason="branch $(other_local "$head_ref") for issue #$issue exists here beside released PR #$number"
 elif [ "${#resumable[@]}" -eq 1 ]; then
   [ "$(leftover "$head_ref")" = behind ] && fast_forward=true
   verdict=resume reason="open PR #$number is on $head_ref and was released; the resumed worktree gets new databases" launch="$head_ref"

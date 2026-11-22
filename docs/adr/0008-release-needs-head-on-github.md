@@ -1,6 +1,6 @@
 # Release Needs HEAD on GitHub
 
-`/dispatch release` removes a worktree whose work is not merged, so a worktree waiting on review, or abandoned, does not sit on the machine. It removes one only when a pull request for its branch, in any state, has a head commit that equals the worktree's `HEAD` or descends from it, the worktree has no uncommitted changes, and no agent in it is working or blocked. Either way GitHub holds every commit in the worktree, so deleting the local branch with `-D` loses nothing.
+`/dispatch release` removes a worktree whose work is not merged, so a worktree waiting on review, or abandoned, does not sit on the machine. It removes one only when a pull request for its branch, in any state, has a head commit that equals the worktree's `HEAD` or descends from it, the worktree has no uncommitted changes, and every agent in it is idle or done. Either way GitHub holds every commit in the worktree, so deleting the local branch with `-D` loses nothing.
 
 ## Consequences & Tradeoffs
 

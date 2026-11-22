@@ -75,7 +75,7 @@ git -C "$primary" worktree add -q -b feature-a "$wt_path"
 head="$(git -C "$wt_path" rev-parse HEAD)"
 
 echo '{"result":{"agents":[]}}' >"$fake/agents.json"
-echo "{\"result\":{\"workspaces\":[{\"label\":\"feature a\",\"worktree\":{\"checkout_path\":\"$wt_path\"}}]}}" >"$fake/workspaces.json"
+echo "{\"result\":{\"workspaces\":[{\"label\":\"feature a\",\"workspace_id\":\"w7\",\"worktree\":{\"checkout_path\":\"$wt_path\"}}]}}" >"$fake/workspaces.json"
 
 failed=0
 check() {
@@ -90,6 +90,7 @@ preflight_pr() { (cd "$primary" && "$scripts/preflight.sh" --pr "$1") | jq -r "$
 printf 'worktree-status.sh\n'
 check "no PR is not releasable" "no pull request holds HEAD" "$(status '.[0].releasable')"
 check "the label comes from Herdr" "feature a" "$(status '.[0].label')"
+check "the workspace id comes from Herdr" "w7" "$(status '.[0].workspace_id')"
 
 echo "[{\"number\":7,\"state\":\"OPEN\",\"headRefOid\":\"$head\"}]" >"$fake/prs-feature-a.json"
 echo '[{"bucket":"pass"},{"bucket":"fail"}]' >"$fake/checks-7.json"
@@ -130,7 +131,7 @@ check "a dirty tree is not releasable" "uncommitted changes" "$(status '.[0].rel
 rm "$wt_path/scratch.txt"
 
 echo "{\"result\":{\"agents\":[{\"name\":\"issue-1\",\"agent_status\":\"blocked\",\"cwd\":\"$wt_path/lib\"}]}}" >"$fake/agents.json"
-check "a blocked agent inside the worktree stops release" "agent is working or blocked" "$(status '.[0].releasable')"
+check "a blocked agent inside the worktree stops release" "agent is not idle" "$(status '.[0].releasable')"
 echo "{\"result\":{\"agents\":[{\"name\":\"issue-2\",\"agent_status\":\"working\",\"cwd\":\"${wt_path}b\"}]}}" >"$fake/agents.json"
 check "an agent in a sibling path does not count" "yes" "$(status '.[0].releasable')"
 echo '{"result":{"agents":[]}}' >"$fake/agents.json"
@@ -163,6 +164,27 @@ echo '[]' >"$fake/prs-feature-a.json"
 echo '{"result":{"agents":[{"name":"shell","agent_status":"idle","cwd":null}]}}' >"$fake/agents.json"
 check "an agent with no cwd does not break status" "[]" "$(status '.[0].agents | tostring')"
 echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+
+# Herdr reports unknown when it cannot tell what an agent is doing, so only
+# idle and done count as idle.
+echo '[{"number":7,"state":"OPEN","headRefOid":"'"$head"'"}]' >"$fake/prs-feature-a.json"
+echo "{\"result\":{\"agents\":[{\"name\":\"issue-3\",\"agent_status\":\"unknown\",\"cwd\":\"$wt_path\"}]}}" >"$fake/agents.json"
+check "an agent in an unknown state stops release" "agent is not idle" "$(status '.[0].releasable')"
+echo "{\"result\":{\"agents\":[{\"name\":\"issue-3\",\"agent_status\":\"done\",\"cwd\":\"$wt_path\"}]}}" >"$fake/agents.json"
+check "a done agent does not stop release" "yes" "$(status '.[0].releasable')"
+echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+echo '[]' >"$fake/prs-feature-a.json"
+
+# A worktree directory deleted without git worktree prune is still listed.
+gone="$scratch/repo.gone"
+git -C "$primary" worktree add -q -b gone "$gone"
+rm -rf "$gone"
+check "a missing worktree directory is reported" "worktree directory missing" \
+  "$(status '.[] | select(.branch == "gone") | .releasable')"
+check "a missing worktree directory leaves the other rows" "feature-a" \
+  "$(status '.[] | select(.branch == "feature-a") | .branch')"
+git -C "$primary" worktree prune
+git -C "$primary" branch -q -D gone
 
 printf 'preflight.sh\n'
 check "a new branch is clear" "clear zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
@@ -258,6 +280,16 @@ echo '[{"number":25,"headRefName":"zorn/issue-6-old","isCrossRepository":false}]
 check "a released PR beside another worktree for the issue is skipped" "skip zorn/issue-6-new" "$(preflight zorn/issue-6-new 6)"
 git -C "$primary" worktree remove "$issue6_wt"
 git -C "$primary" branch -q -D zorn/issue-6-current
+echo '[]' >"$fake/mine.json"
+
+# The planned branch counts as another branch for the issue before a resume:
+# its worktree means the issue is still being worked on there.
+issue4_wt="$scratch/repo.issue-4-bar"
+git -C "$primary" worktree add -q -b zorn/issue-4-bar "$issue4_wt"
+echo '[{"number":26,"headRefName":"zorn/issue-4-foo","isCrossRepository":false}]' >"$fake/mine.json"
+check "a released PR beside a worktree on the planned branch is skipped" "skip zorn/issue-4-bar" "$(preflight zorn/issue-4-bar 4)"
+git -C "$primary" worktree remove "$issue4_wt"
+git -C "$primary" branch -q -D zorn/issue-4-bar
 echo '[]' >"$fake/mine.json"
 
 printf 'preflight.sh --pr\n'
