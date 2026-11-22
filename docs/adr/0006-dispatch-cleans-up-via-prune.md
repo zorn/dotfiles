@@ -1,5 +1,7 @@
 # Dispatch Cleans Up via Prune
 
+> **Extended by [ADR 0008](0008-release-needs-head-on-github.md)** — `/dispatch release` removes unmerged worktrees, including one whose pull request closed, when a pull request holds the worktree's `HEAD`.
+
 The `dispatch` skill removes a worktree only when two checks agree: a dry run of `wt step prune` lists it, so its work is in `main`, and a pull request merged from the worktree's own `HEAD`. Prune alone cannot tell a finished worktree from a freshly launched one, and GitHub alone cannot tell whether removing the branch loses work. Settled in [issue #95](https://github.com/zorn/dotfiles/issues/95) and its pull request, #102.
 
 ## Consequences & Tradeoffs

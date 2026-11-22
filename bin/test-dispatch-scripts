@@ -1,0 +1,231 @@
+#!/usr/bin/env bash
+#
+# Run the dispatch skill's scripts against a throwaway repo and check their
+# verdicts.
+#
+# A wrong "releasable: yes" lets Release delete a branch whose commits are not
+# on GitHub, and a wrong "clear" launches a second agent onto dispatched work.
+# Fake `gh` and `herdr` commands stand in for the real tools,
+# reading canned JSON from files, so the cases run offline.
+
+set -euo pipefail
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+scripts="$repo_root/claude/skills/dispatch/scripts"
+
+# git reports worktree paths with symlinks resolved (/private/var on macOS),
+# so resolve the scratch path the same way for the fakes to match.
+scratch="$(cd "$(mktemp -d)" && pwd -P)"
+trap 'rm -rf "$scratch"' EXIT
+fake="$scratch/fake"
+mkdir -p "$scratch/bin" "$fake"
+
+# gh: `pr list --head <b>` reads fake/prs-<b with / as _>.json, `pr list
+# --author` reads fake/mine.json, and `pr checks <n>` reads fake/checks-<n>.json.
+# `pr view <ref>` records its ref in fake/pr-view-ref and reads
+# fake/pr-view.json. `repo view` reads fake/repo.json, and `api user` reads
+# fake/me.json.
+cat >"$scratch/bin/gh" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+fake="$FAKE_DIR"
+case "$1 $2" in
+  'pr list')
+    shift 2
+    head="" author=""
+    while [ $# -gt 0 ]; do
+      case "$1" in --head) head="$2"; shift ;; --author) author="$2"; shift ;; esac
+      shift
+    done
+    if [ -n "$author" ]; then cat "$fake/mine.json" 2>/dev/null || echo '[]'
+    else cat "$fake/prs-${head//\//_}.json" 2>/dev/null || echo '[]'; fi
+    ;;
+  'pr checks') cat "$fake/checks-$3.json" ;;
+  'pr view') echo "$3" >"$fake/pr-view-ref"; cat "$fake/pr-view.json" ;;
+  'repo view') cat "$fake/repo.json" ;;
+  'api user') cat "$fake/me.json" ;;
+  *) printf 'unexpected gh call: %s\n' "$*" >&2; exit 1 ;;
+esac
+FAKE
+cat >"$scratch/bin/herdr" <<'FAKE'
+#!/usr/bin/env bash
+case "$1 $2" in
+  'agent list') cat "$FAKE_DIR/agents.json" ;;
+  'workspace list') cat "$FAKE_DIR/workspaces.json" ;;
+  *) printf 'unexpected herdr call: %s\n' "$*" >&2; exit 1 ;;
+esac
+FAKE
+chmod +x "$scratch/bin/"*
+export PATH="$scratch/bin:$PATH" FAKE_DIR="$fake"
+
+# A primary checkout with an origin, and one linked worktree on feature-a.
+git init -q --bare "$scratch/origin.git"
+git -c init.defaultBranch=main init -q "$scratch/repo"
+primary="$scratch/repo"
+git -C "$primary" -c user.name=t -c user.email=t@t commit -q --allow-empty -m init
+git -C "$primary" remote add origin "$scratch/origin.git"
+git -C "$primary" push -q origin main
+wt_path="$scratch/repo.feature-a"
+git -C "$primary" worktree add -q -b feature-a "$wt_path"
+head="$(git -C "$wt_path" rev-parse HEAD)"
+
+echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+echo "{\"result\":{\"workspaces\":[{\"label\":\"feature a\",\"worktree\":{\"checkout_path\":\"$wt_path\"}}]}}" >"$fake/workspaces.json"
+
+failed=0
+check() {
+  local name="$1" expected="$2" actual="$3"
+  if [ "$expected" = "$actual" ]; then printf '  pass  %s\n' "$name"
+  else printf '  FAIL  %s: expected %s, got %s\n' "$name" "$expected" "$actual"; failed=1; fi
+}
+status() { (cd "$primary" && "$scripts/worktree-status.sh") | jq -r "$1"; }
+preflight() { (cd "$primary" && "$scripts/preflight.sh" "$@") | jq -r '.verdict + " " + .branch'; }
+preflight_pr() { (cd "$primary" && "$scripts/preflight.sh" --pr "$1") | jq -r "$2"; }
+
+printf 'worktree-status.sh\n'
+check "no PR is not releasable" "no pull request holds HEAD" "$(status '.[0].releasable')"
+check "the label comes from Herdr" "feature a" "$(status '.[0].label')"
+
+echo "[{\"number\":7,\"state\":\"OPEN\",\"headRefOid\":\"$head\"}]" >"$fake/prs-feature-a.json"
+echo '[{"bucket":"pass"},{"bucket":"fail"}]' >"$fake/checks-7.json"
+check "a PR at HEAD with a clean tree is releasable" "yes" "$(status '.[0].releasable')"
+check "checks are counted by bucket" "1 1" "$(status '.[0].checks | "\(.pass) \(.fail)"')"
+
+echo '[{"number":7,"state":"OPEN","headRefOid":"0000000"}]' >"$fake/prs-feature-a.json"
+check "a PR head missing here is not releasable" "no pull request holds HEAD" "$(status '.[0].releasable')"
+
+# A teammate pushes to the PR after the review starts, so its head moves past
+# the worktree's HEAD. Release may still remove the worktree. GitHub keeps
+# every PR's head at refs/pull/<n>/head, and status fetches it from there.
+# -b main: a bare repo's HEAD names git's default branch, which is master on
+# older git, so a plain clone would commit onto a new, unrelated history.
+git clone -q -b main "$scratch/origin.git" "$scratch/teammate"
+git -C "$scratch/teammate" -c user.name=t -c user.email=t@t commit -q --allow-empty -m pushed
+pushed="$(git -C "$scratch/teammate" rev-parse HEAD)"
+git -C "$scratch/teammate" push -q origin HEAD:refs/heads/feature-a HEAD:refs/pull/7/head
+echo "[{\"number\":7,\"state\":\"OPEN\",\"headRefOid\":\"$pushed\"}]" >"$fake/prs-feature-a.json"
+check "a PR whose head is ahead of HEAD is releasable" "yes" "$(status '.[0].releasable')"
+
+# A squash merge can delete the branch, which leaves the PR's last head only
+# at refs/pull/<n>/head.
+git -C "$scratch/teammate" -c user.name=t -c user.email=t@t commit -q --allow-empty -m last
+last="$(git -C "$scratch/teammate" rev-parse HEAD)"
+git -C "$scratch/teammate" push -q origin HEAD:refs/pull/8/head
+echo "[{\"number\":8,\"state\":\"MERGED\",\"headRefOid\":\"$last\"}]" >"$fake/prs-feature-a.json"
+check "a merged PR whose branch is gone is releasable" "yes" "$(status '.[0].releasable')"
+
+# The other way around: the worktree has a commit GitHub does not.
+echo "[{\"number\":7,\"state\":\"OPEN\",\"headRefOid\":\"$head\"}]" >"$fake/prs-feature-a.json"
+git -C "$wt_path" -c user.name=t -c user.email=t@t commit -q --allow-empty -m local
+check "a HEAD ahead of the PR is not releasable" "no pull request holds HEAD" "$(status '.[0].releasable')"
+git -C "$wt_path" reset -q --hard "$head"
+
+touch "$wt_path/scratch.txt"
+check "a dirty tree is not releasable" "uncommitted changes" "$(status '.[0].releasable')"
+rm "$wt_path/scratch.txt"
+
+echo "{\"result\":{\"agents\":[{\"name\":\"issue-1\",\"agent_status\":\"blocked\",\"cwd\":\"$wt_path/lib\"}]}}" >"$fake/agents.json"
+check "a blocked agent inside the worktree stops release" "agent is working or blocked" "$(status '.[0].releasable')"
+echo "{\"result\":{\"agents\":[{\"name\":\"issue-2\",\"agent_status\":\"working\",\"cwd\":\"${wt_path}b\"}]}}" >"$fake/agents.json"
+check "an agent in a sibling path does not count" "yes" "$(status '.[0].releasable')"
+echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+
+echo '[{"number":3,"state":"MERGED","headRefOid":"0000000"}]' >"$fake/prs-feature-a.json"
+check "a merged PR at another commit is not shown" "null" "$(status '.[0].pr')"
+
+printf 'preflight.sh\n'
+check "a new branch is clear" "clear zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+check "a branch without the issue prefix is refused" "2" \
+  "$( (cd "$primary" && "$scripts/preflight.sh" feature-b 9) >/dev/null 2>&1; echo $?)"
+
+git -C "$primary" branch zorn/issue-9-new
+check "an existing local branch is skipped" "skip zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+git -C "$primary" branch -q -D zorn/issue-9-new
+
+# A fresh slug can differ from an earlier run's, so the prefix finds it.
+git -C "$primary" branch zorn/issue-9-older-slug
+check "a local branch for the issue with another slug is skipped" "skip zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+git -C "$primary" branch -q -D zorn/issue-9-older-slug
+git -C "$primary" branch zorn/issue-90-other
+check "another issue whose number starts the same is clear" "clear zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+git -C "$primary" branch -q -D zorn/issue-90-other
+
+echo '{"result":{"agents":[{"name":"issue-9","agent_status":"idle","cwd":"/elsewhere"}]}}' >"$fake/agents.json"
+check "a live agent with the name is skipped" "skip zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+
+issue_wt="$scratch/repo.issue-9-built"
+git -C "$primary" worktree add -q -b zorn/issue-9-built "$issue_wt"
+echo '[{"number":5,"headRefName":"zorn/issue-9-built"}]' >"$fake/mine.json"
+check "my open PR with a worktree is skipped" "skip zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+git -C "$primary" worktree remove "$issue_wt"
+git -C "$primary" branch -q -D zorn/issue-9-built
+
+echo '[{"number":5,"headRefName":"zorn/issue-9-released"}]' >"$fake/mine.json"
+check "my open PR without a worktree resumes on its branch" "resume zorn/issue-9-released" "$(preflight zorn/issue-9-new 9)"
+echo '[{"number":4,"headRefName":"zorn/issue-90-other"}]' >"$fake/mine.json"
+check "my open PR for another issue is ignored" "clear zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
+
+# A plain wt remove keeps the local branch, and wt herdr-resume would reuse it
+# instead of origin/<branch>. A branch GitHub fully holds is fast-forwarded. A
+# branch with commits GitHub lacks is left alone.
+git -C "$primary" branch zorn/issue-9-left "$head"
+git -C "$scratch/teammate" push -q origin "$pushed:refs/heads/zorn/issue-9-left"
+echo '[{"number":6,"headRefName":"zorn/issue-9-left"}]' >"$fake/mine.json"
+check "a released branch behind origin resumes with a fast-forward" "resume zorn/issue-9-left true" \
+  "$( (cd "$primary" && "$scripts/preflight.sh" zorn/issue-9-new 9) | jq -r '"\(.verdict) \(.branch) \(.fast_forward)"')"
+git -C "$primary" branch -q -D zorn/issue-9-left
+git -C "$primary" -c user.name=t -c user.email=t@t commit -q --allow-empty -m local-only
+git -C "$primary" branch zorn/issue-9-left HEAD
+git -C "$primary" reset -q --hard "$head"
+check "a released branch with local-only commits is skipped" "skip" \
+  "$( (cd "$primary" && "$scripts/preflight.sh" zorn/issue-9-new 9) | jq -r .verdict)"
+echo '[]' >"$fake/mine.json"
+
+git -C "$primary" push -q origin main:refs/heads/zorn/issue-8-taken
+check "a branch name taken on GitHub needs a rename" "rename zorn/issue-8-taken" "$(preflight zorn/issue-8-taken 8)"
+echo '[{"number":2}]' >"$fake/prs-zorn_issue-8-old.json"
+check "a branch name with an old PR needs a rename" "rename zorn/issue-8-old" "$(preflight zorn/issue-8-old 8)"
+
+printf 'preflight.sh --pr\n'
+echo '{"nameWithOwner":"acme/app"}' >"$fake/repo.json"
+echo '{"login":"me"}' >"$fake/me.json"
+pr_view() { # number branch author state cross url
+  printf '{"number":%s,"headRefName":"%s","author":{"login":"%s"},"state":"%s","isCrossRepository":%s,"url":"%s","title":"Fix it"}\n' "$@" >"$fake/pr-view.json"
+}
+pr_view 12 released-x me OPEN false https://github.com/acme/app/pull/12
+check "my open PR launches on its branch" "pr released-x pr-12 true" "$(preflight_pr 12 '"\(.verdict) \(.branch) \(.agent) \(.mine)"')"
+
+pr_view 13 released-y teammate OPEN false https://github.com/acme/app/pull/13
+check "a teammate's PR launches as not mine" "pr false" "$(preflight_pr 13 '"\(.verdict) \(.mine)"')"
+
+pr_view 14 feature-a me OPEN false https://github.com/acme/app/pull/14
+check "a PR whose branch has a worktree is skipped" "skip" "$(preflight_pr 14 .verdict)"
+
+pr_view 12 released-x me OPEN false https://github.com/acme/app/pull/12
+echo '{"result":{"agents":[{"name":"pr-12","agent_status":"idle","cwd":"/elsewhere"}]}}' >"$fake/agents.json"
+check "a PR whose agent is live is skipped" "skip" "$(preflight_pr 12 .verdict)"
+
+pr_view 19 zorn/issue-9-left me OPEN false https://github.com/acme/app/pull/19
+check "a PR whose local branch has local-only commits is skipped" "skip" "$(preflight_pr 19 .verdict)"
+git -C "$primary" branch -q -f zorn/issue-9-left "$head"
+check "a PR whose local branch is behind origin launches with a fast-forward" "pr true" "$(preflight_pr 19 '"\(.verdict) \(.fast_forward)"')"
+git -C "$primary" branch -q -D zorn/issue-9-left
+echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+
+# herdr-resume builds from origin/<branch>, which a fork PR does not have.
+pr_view 15 patch-1 outsider OPEN true https://github.com/acme/app/pull/15
+check "a fork PR is refused" "refuse" "$(preflight_pr 15 .verdict)"
+
+# gh pr view opens a URL from any repo, so the URL must name this one.
+pr_view 16 released-z me OPEN false https://github.com/other/lib/pull/16
+check "a PR from another repo is refused" "refuse" "$(preflight_pr https://github.com/other/lib/pull/16 .verdict)"
+check "a PR URL is passed to gh as given" "https://github.com/other/lib/pull/16" "$(cat "$fake/pr-view-ref")"
+
+pr_view 18 released-v me OPEN false https://github.com/Acme/App/pull/18
+check "a URL that differs from the repo only in case launches" "pr" "$(preflight_pr https://github.com/Acme/App/pull/18 .verdict)"
+
+pr_view 17 released-w me MERGED false https://github.com/acme/app/pull/17
+check "a PR that is not open is refused" "refuse" "$(preflight_pr 17 .verdict)"
+
+exit "$failed"

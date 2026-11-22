@@ -30,7 +30,9 @@
 #                that each section runs alone and asks only for its own tool.
 #                It then runs bin/test-hexdocs-hook, because a wrong URL
 #                rewrite sends every Elixir doc fetch to the wrong page
-#                without an error.
+#                without an error. Last, it runs bin/test-dispatch-scripts,
+#                because a wrong "releasable" lets dispatch delete commits
+#                GitHub never got.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -188,6 +190,9 @@ check_shell() {
 
   printf '\n==> test-hexdocs-hook: WebFetch URL rewrite\n'
   ./bin/test-hexdocs-hook || failed=1
+
+  printf '\n==> test-dispatch-scripts: dispatch status and preflight verdicts\n'
+  ./bin/test-dispatch-scripts || failed=1
   return "$failed"
 }
 
@@ -232,7 +237,8 @@ advise() {
       printf 'before something runs it. A test-check failure means a CI job\n' >&2
       printf 'would run the wrong section, or ask for a tool it never installed.\n' >&2
       printf 'A test-hexdocs-hook failure means Elixir doc fetches would land on\n' >&2
-      printf 'the wrong URL.\n' >&2
+      printf 'the wrong URL. A test-dispatch-scripts failure means dispatch could\n' >&2
+      printf 'launch onto work already dispatched, or delete unpushed commits.\n' >&2
       ;;
     skills)
       printf 'A check-skills finding means a skill would not load, or would load\n' >&2

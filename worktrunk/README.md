@@ -39,6 +39,22 @@ wt remove <branch>
 
 The hook closes the worktree's Herdr workspace, which also stops anything still running in it. It then drops the worktree's dev and test databases and clears its stored database names and port. `wt` removes the worktree last, and deletes the branch when it is merged. `wt merge` runs the same teardown, because it removes the worktree too. Run from a console in the worktree's own workspace, either command leaves that workspace open, because closing it would stop `wt` mid-removal. Close it yourself afterward.
 
+**4. Release and resume.** When a branch's pull request waits on review, you can remove the worktree and keep the pull request. The same steps abandon work whose pull request has closed. First run `git fetch`, so a commit pushed from elsewhere is available locally. When a merge deleted the branch, run `git fetch origin refs/pull/<n>/head` instead. Then check three things: the worktree has no uncommitted changes, the pull request's head commit is the worktree's `HEAD` or descends from it, and no agent in the worktree is working or waiting on a question. The first two mean GitHub holds every commit. Then, from the repo's console, run:
+
+```sh
+wt remove --foreground -D <branch>
+```
+
+The `-D` deletes the local branch, which is not merged. The remote branch and the pull request stay. `/dispatch release` runs the same checks and command.
+
+To pick the work up again, run:
+
+```sh
+git fetch && wt herdr-resume <branch>
+```
+
+The fetch updates `origin/<branch>`. `wt herdr-resume` is `wt herdr` without `--create`, so it builds the branch from `origin/<branch>`. Do not use `wt herdr` here: with `--create`, `wt` ignores the remote branch and makes a new one from `main`, without the pull request's commits. A repo that opts in to databases gets new ones in the resumed worktree, so dev data from before the release is gone.
+
 ## When removal stops
 
 When removal stops, the worktree and its databases stay in place. Only uncommitted changes stop it before the hook runs. Every other stop comes after the hook has closed the worktree's Herdr workspace, so reopen it with `herdr worktree open --path <worktree>` if you need it. Each message says what to do.
@@ -68,7 +84,7 @@ An app opts in with four changes in its own repo. [zorn/flick#194](https://githu
 
 ## What is here
 
-- [`config.toml`](config.toml) registers the hooks and the `wt herdr` alias.
+- [`config.toml`](config.toml) registers the hooks and the `wt herdr` and `wt herdr-resume` aliases.
 - [`hooks/pre-start`](hooks/pre-start) copies build state and writes the port, for any repo with a `mix.exs`.
 - [`hooks/postgres`](hooks/postgres) names, creates, and drops per-worktree databases for an app that opts in.
 - [`hooks/herdr`](hooks/herdr) closes a worktree's Herdr workspace.
