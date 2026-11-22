@@ -10,6 +10,11 @@
 
 set -euo pipefail
 
+# bin/test-check runs a nested bin/check with stub tools. Its stub jq prints
+# nothing, so the watch never settles there and each case waits out its
+# deadline.
+[ -z "${TEST_CHECK_NESTED:-}" ] || exit 0
+
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 watch="$repo_root/claude/skills/implement/scripts/watch-pr-feedback.sh"
 
@@ -115,6 +120,14 @@ new_case review-wait-over-checks-pending
 echo '[{"name":"build","bucket":"pending","link":"https://example.test/1"}]' >"$case_dir/checks.json"
 run_watch 2 WATCH_REVIEW_WAIT=0
 expect_still_watching 'the review wait has elapsed but checks are pending'
+
+# The state file outlives a run, so a re-armed watch already holds ids from
+# the first review. Only a review that arrives during this run may settle it.
+new_case rearmed-after-earlier-review
+echo '[{"id":41,"user":{"login":"Copilot"},"path":"a.sh","line":3,"body":"nit"}]' >"$case_dir/comments.json"
+printf 'c41\nr40\n' >"$case_dir/pr-feedback-seen-owner-repo-7.txt"
+run_watch 2 WATCH_REVIEW_WAIT=3600
+expect_still_watching 'a re-armed watch with only earlier reviews keeps going'
 
 new_case no-review
 run_watch 5 WATCH_REVIEW_WAIT=0

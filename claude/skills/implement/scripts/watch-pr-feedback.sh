@@ -31,11 +31,12 @@
 #                        list fetched successfully with nothing pending, no
 #                        new item for WATCH_SETTLE_POLLS polls, and
 #                        WATCH_FAST_WINDOW elapsed. It also needs a review
-#                        summary or an inline comment. Without one, it settles
-#                        once WATCH_REVIEW_WAIT elapses and reports "no review
-#                        arrived". Off by default, because there
-#                        is no signal that says "no more feedback is coming"
-#                        and guessing wrong ends the watch early.
+#                        summary or an inline comment to arrive during this
+#                        run, not one from an earlier run. Without one, it
+#                        settles once WATCH_REVIEW_WAIT elapses and reports
+#                        "no review arrived". Off by default, because there is
+#                        no signal that says "no more feedback is coming" and
+#                        guessing wrong ends the watch early.
 #   WATCH_SETTLE_POLLS   consecutive quiet polls before settling (default 2)
 #   WATCH_REVIEW_WAIT    seconds to wait for a review before settling without
 #                        one (default 600). It is longer than the fast window,
@@ -95,6 +96,9 @@ elapsed_clock() { printf '%02d:%02d' "$(($1 / 60))" "$(($1 % 60))"; }
 started=$(date +%s)
 polls=0
 quiet_polls=0
+# Reviews that arrived during this run. The state file outlives a run, so its
+# totals would let a re-armed watch settle on the review it already reported.
+reviews_arrived=0
 
 status "watching $REPO#$PR — state file $STATE"
 end_status_line
@@ -151,6 +155,9 @@ while true; do
       end_status_line
       printf '%s\n' "$rest" | truncate_line
       new_count=$((new_count + 1))
+      # Inline comments count as a review: a review made only of them has an
+      # empty summary body, so it never records an `r` id.
+      case "$id" in c* | r*) reviews_arrived=$((reviews_arrived + 1)) ;; esac
     fi
   done <"$ITEMS"
 
@@ -187,17 +194,15 @@ while true; do
     [ "$elapsed" -ge "$FAST_WINDOW" ] &&
     [ "${pending:-1}" -eq 0 ] &&
     [ "$quiet_polls" -ge "$SETTLE_POLLS" ]; then
-    # Inline comments count as a review: a review made only of them
-    # has an empty summary body, so it never records an `r` id.
-    if [ "${reviews_seen:-0}" -gt 0 ] || [ "$(seen_count c)" -gt 0 ]; then
+    if [ "$reviews_arrived" -gt 0 ]; then
       end_status_line
       printf 'WATCH SETTLED — checks: %s; %s inline, %s review(s), %s comment(s); quiet for %d polls\n' \
         "$rollup" "$(seen_count c)" "$reviews_seen" "$(seen_count i)" "$quiet_polls"
       exit 0
     elif [ "$elapsed" -ge "$REVIEW_WAIT" ]; then
       end_status_line
-      printf 'WATCH SETTLED — checks: %s; no review arrived in %s\n' \
-        "$rollup" "$(elapsed_clock "$elapsed")"
+      printf 'WATCH SETTLED — checks: %s; no review arrived in %s; %s comment(s)\n' \
+        "$rollup" "$(elapsed_clock "$elapsed")" "$(seen_count i)"
       exit 0
     fi
   fi
