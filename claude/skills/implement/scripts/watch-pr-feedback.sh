@@ -32,11 +32,11 @@
 #                        new item for WATCH_SETTLE_POLLS polls, and
 #                        WATCH_FAST_WINDOW elapsed. It also needs a review
 #                        summary or an inline comment from another account to
-#                        arrive during this run. Without one, it
-#                        settles once WATCH_REVIEW_WAIT elapses and reports
-#                        "no review arrived". Off by default, because there is
-#                        no signal that says "no more feedback is coming" and
-#                        guessing wrong ends the watch early.
+#                        arrive during this run. Without one, it settles once
+#                        WATCH_REVIEW_WAIT elapses and reports "no review
+#                        arrived". Off by default, because there is no signal
+#                        that says "no more feedback is coming" and guessing
+#                        wrong ends the watch early.
 #   WATCH_SETTLE_POLLS   consecutive quiet polls before settling (default 2)
 #   WATCH_REVIEW_WAIT    seconds to wait for a review before settling without
 #                        one (default 600). It is longer than the fast window,
@@ -126,18 +126,21 @@ while true; do
     checks_json='[]'
   fi
 
+  # A failed feedback fetch is not a quiet poll: counting it as one would let
+  # the watch settle, even as "no review arrived", with a review unread.
+  feeds_ok=1
   {
     # Inline review comments — the ones that need a threaded reply.
     gh api --paginate "repos/$REPO/pulls/$PR/comments?per_page=100" \
-      --jq '.[] | "c\(.id)|\(.user.login) — \(.path):\(.line // .original_line // 0) — id=\(.id) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
+      --jq '.[] | "c\(.id)|\(.user.login) — \(.path):\(.line // .original_line // 0) — id=\(.id) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
     # Review summaries (Copilot posts its overview as one of these).
     gh api --paginate "repos/$REPO/pulls/$PR/reviews?per_page=100" \
-      --jq '.[] | select((.body // "") != "") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
+      --jq '.[] | select((.body // "") != "") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
     # Top-level PR conversation.
     gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
-      --jq '.[] | "i\(.id)|\(.user.login) — COMMENT — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
+      --jq '.[] | "i\(.id)|\(.user.login) — COMMENT — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
     # A crashed or cancelled job must not read as silence, so both are
     # reported. "skipping" is not: a skipped check is almost always a
@@ -167,7 +170,7 @@ while true; do
     fi
   done <"$ITEMS"
 
-  if [ "$new_count" -eq 0 ]; then
+  if [ "$new_count" -eq 0 ] && [ "$feeds_ok" -eq 1 ]; then
     quiet_polls=$((quiet_polls + 1))
   else
     quiet_polls=0
@@ -213,7 +216,7 @@ while true; do
     fi
   fi
 
-  status "[$(elapsed_clock "$elapsed")] poll $polls · $(seen_count c) inline, $reviews_seen review(s), $(seen_count i) comment(s) · checks: $rollup · next in ${sleep_for}s"
+  status "[$(elapsed_clock "$elapsed")] poll $polls · $(seen_count c) inline, $reviews_seen review(s), $(seen_count i) comment(s)$([ "$feeds_ok" -eq 1 ] || printf ' (feedback fetch failed)') · checks: $rollup · next in ${sleep_for}s"
 
   sleep "$sleep_for"
 done

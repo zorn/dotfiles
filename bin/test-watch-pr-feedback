@@ -24,7 +24,8 @@ mkdir -p "$scratch/bin"
 
 # gh: `pr checks` reads $FAKE_DIR/checks.json. `api --paginate <endpoint>
 # --jq <filter>` runs the filter over comments.json, reviews.json, or
-# issue-comments.json in $FAKE_DIR. A missing file reads as an empty list.
+# issue-comments.json in $FAKE_DIR. A missing file reads as an empty list,
+# and a <file>.fail marker makes that endpoint fail.
 # `api user` reports the signed-in login as "me".
 cat >"$scratch/bin/gh" <<'FAKE'
 #!/usr/bin/env bash
@@ -40,6 +41,7 @@ case "$1 $2" in
       *) printf 'unexpected gh api endpoint: %s\n' "$3" >&2; exit 1 ;;
     esac
     [ "$4" = '--jq' ] || { printf 'expected --jq, got: %s\n' "$4" >&2; exit 1; }
+    [ ! -e "$FAKE_DIR/$file.fail" ] || { echo 'HTTP 502' >&2; exit 1; }
     if [ -e "$FAKE_DIR/$file" ]; then jq -r "$5" "$FAKE_DIR/$file"; else jq -rn '[]' | jq -r "$5"; fi
     ;;
   *) printf 'unexpected gh call: %s\n' "$*" >&2; exit 1 ;;
@@ -137,6 +139,13 @@ new_case own-replies-between-runs
 echo '[{"id":42,"user":{"login":"me"},"path":"a.sh","line":3,"body":"Fixed."}]' >"$case_dir/comments.json"
 run_watch 2 WATCH_REVIEW_WAIT=3600
 expect_still_watching 'only the agent'"'"'s own replies arrive'
+
+# A failed fetch is not a quiet poll, or the no-review fallback would report
+# "no review arrived" while a review sits unread behind the failing endpoint.
+new_case review-fetch-failing
+touch "$case_dir/reviews.json.fail"
+run_watch 2 WATCH_REVIEW_WAIT=0
+expect_still_watching 'the reviews fetch fails'
 
 new_case no-review
 run_watch 5 WATCH_REVIEW_WAIT=0
