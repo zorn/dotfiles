@@ -30,7 +30,7 @@
 #                that each section runs alone and asks only for its own tool.
 #                It then runs bin/test-hexdocs-hook, because a wrong URL
 #                rewrite sends every Elixir doc fetch to the wrong page
-#                without an error. It then runs bin/test-dispatch-scripts,
+#                without an error. Next comes bin/test-dispatch-scripts,
 #                because a wrong "releasable" lets dispatch delete commits
 #                GitHub never got. Last, it runs bin/test-watch-pr-feedback,
 #                because a PR watch that never settles leaves the agent

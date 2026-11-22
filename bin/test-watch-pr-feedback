@@ -5,7 +5,7 @@
 #
 # Under an agent's Monitor, the settled line is the only signal that the watch
 # is over. A watch that never settles leaves the agent waiting in silence, and
-# one that settles early ends before the review it was waiting for. A fake
+# one that settles early ends before the review arrives. A fake
 # `gh` command reads canned JSON from files, so the cases run offline.
 
 set -euo pipefail
@@ -17,10 +17,9 @@ scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 mkdir -p "$scratch/bin"
 
-# gh: `pr checks` reads $FAKE_DIR/checks.json. `api <endpoint> --jq <filter>`
-# reads $FAKE_DIR/comments.json, reviews.json, or issue-comments.json by
-# endpoint, defaulting to an empty list, and applies the filter as real gh
-# does.
+# gh: `pr checks` reads $FAKE_DIR/checks.json. `api --paginate <endpoint>
+# --jq <filter>` runs the filter over comments.json, reviews.json, or
+# issue-comments.json in $FAKE_DIR. A missing file reads as an empty list.
 cat >"$scratch/bin/gh" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
@@ -45,18 +44,18 @@ export PATH="$scratch/bin:$PATH"
 failed=0
 case_dir=""
 
-# Start a case with an empty fake and its own state file, with every check
-# passed unless the case overwrites checks.json.
+# Start a case in its own directory, with one passing check unless the case
+# overwrites checks.json.
 new_case() {
   case_dir="$scratch/$1"
   mkdir -p "$case_dir"
   echo '[{"name":"build","bucket":"pass","link":"https://example.test/1"}]' >"$case_dir/checks.json"
 }
 
-# Run the watch with WATCH_SETTLE=1 for at most $1 seconds, polling fast, with
-# any further VAR=value arguments added to its environment. Stdout lands in
-# $case_dir/out, and $case_dir/status holds the exit code, or "killed" when
-# the watch was still running at the deadline.
+# Run the watch for at most $1 seconds, with any further VAR=value arguments
+# added to its environment. Stdout lands in $case_dir/out. $case_dir/status
+# holds the exit code, or "killed" when the watch was still running at the
+# deadline.
 run_watch() {
   local deadline="$1" pid ticks=0
   shift
@@ -79,15 +78,19 @@ run_watch() {
   fi
 }
 
+report_failure() {
+  printf '  FAIL  %s: wanted %s\n' "$1" "$2"
+  printf '        status: %s\n        stdout:\n' "$(cat "$case_dir/status")"
+  sed 's/^/          /' "$case_dir/out"
+  failed=1
+}
+
 expect_settled() {
   local name="$1" want="$2"
   if [ "$(cat "$case_dir/status")" = 0 ] && grep -qF "$want" "$case_dir/out"; then
     printf '  pass  %s\n' "$name"
   else
-    printf '  FAIL  %s: wanted exit 0 and a line containing %s\n' "$name" "$want"
-    printf '        status: %s\n        stdout:\n' "$(cat "$case_dir/status")"
-    sed 's/^/          /' "$case_dir/out"
-    failed=1
+    report_failure "$name" "exit 0 and a line containing $want"
   fi
 }
 
@@ -96,10 +99,7 @@ expect_still_watching() {
   if [ "$(cat "$case_dir/status")" = killed ] && ! grep -qF 'SETTLED' "$case_dir/out"; then
     printf '  pass  %s\n' "$name"
   else
-    printf '  FAIL  %s: wanted the watch still running at the deadline\n' "$name"
-    printf '        status: %s\n        stdout:\n' "$(cat "$case_dir/status")"
-    sed 's/^/          /' "$case_dir/out"
-    failed=1
+    report_failure "$name" 'the watch still running at the deadline'
   fi
 }
 
@@ -108,6 +108,13 @@ expect_still_watching() {
 new_case review-wait-running
 run_watch 2 WATCH_REVIEW_WAIT=3600
 expect_still_watching 'checks pass and the review wait has not elapsed'
+
+# The no-review fallback must still wait for CI, or a green-looking settle
+# would report on checks that have not finished.
+new_case review-wait-over-checks-pending
+echo '[{"name":"build","bucket":"pending","link":"https://example.test/1"}]' >"$case_dir/checks.json"
+run_watch 2 WATCH_REVIEW_WAIT=0
+expect_still_watching 'the review wait has elapsed but checks are pending'
 
 new_case no-review
 run_watch 5 WATCH_REVIEW_WAIT=0
@@ -120,5 +127,10 @@ echo '[{"id":41,"user":{"login":"Copilot"},"path":"a.sh","line":3,"body":"nit"}]
 echo '[{"id":40,"user":{"login":"Copilot"},"state":"COMMENTED","body":""}]' >"$case_dir/reviews.json"
 run_watch 5 WATCH_REVIEW_WAIT=3600
 expect_settled 'a review of only inline comments arrives' 'WATCH SETTLED — checks: 1 pass; 1 inline, 0 review(s), 0 comment(s)'
+
+new_case summary-only-review
+echo '[{"id":50,"user":{"login":"Copilot"},"state":"COMMENTED","body":"Looks fine."}]' >"$case_dir/reviews.json"
+run_watch 5 WATCH_REVIEW_WAIT=3600
+expect_settled 'a review summary with no inline comments arrives' 'WATCH SETTLED — checks: 1 pass; 0 inline, 1 review(s), 0 comment(s)'
 
 exit "$failed"

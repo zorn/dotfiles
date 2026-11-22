@@ -30,17 +30,17 @@
 #   WATCH_SETTLE         set to 1 to exit once the PR has gone quiet: the check
 #                        list fetched successfully with nothing pending, no
 #                        new item for WATCH_SETTLE_POLLS polls, and
-#                        WATCH_FAST_WINDOW elapsed. It also needs a review in
-#                        (a review summary or an inline comment), or
-#                        WATCH_REVIEW_WAIT elapsed with none, which it reports
-#                        as "no review arrived". Off by default, because there
+#                        WATCH_FAST_WINDOW elapsed. It also needs a review
+#                        summary or an inline comment. Without one, it settles
+#                        once WATCH_REVIEW_WAIT elapses and reports "no review
+#                        arrived". Off by default, because there
 #                        is no signal that says "no more feedback is coming"
 #                        and guessing wrong ends the watch early.
 #   WATCH_SETTLE_POLLS   consecutive quiet polls before settling (default 2)
 #   WATCH_REVIEW_WAIT    seconds to wait for a review before settling without
-#                        one (default 600). Longer than the fast window,
-#                        because Copilot sometimes reviews after two minutes;
-#                        keep it inside the caller's Monitor timeout.
+#                        one (default 600). It is longer than the fast window,
+#                        because Copilot sometimes reviews after two minutes.
+#                        Keep it inside the caller's Monitor timeout.
 #
 # Each item is reported once: ids seen are recorded in a state file, so
 # re-running does not replay a review you have already worked. That also means
@@ -187,7 +187,7 @@ while true; do
     [ "$elapsed" -ge "$FAST_WINDOW" ] &&
     [ "${pending:-1}" -eq 0 ] &&
     [ "$quiet_polls" -ge "$SETTLE_POLLS" ]; then
-    # Inline comments count as a review arriving: a review made only of them
+    # Inline comments count as a review: a review made only of them
     # has an empty summary body, so it never records an `r` id.
     if [ "${reviews_seen:-0}" -gt 0 ] || [ "$(seen_count c)" -gt 0 ]; then
       end_status_line
