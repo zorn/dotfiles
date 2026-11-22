@@ -2,6 +2,7 @@
 name: elixir-security-audit
 description: Audit a whole Elixir project for security — Phoenix, LiveView, Absinthe, Ash, or plain mix — with Hex and Sobelow scans, a manual hunt, and a plain-language report. Use when the user asks to secure, audit, pentest, or security-review an Elixir, Phoenix, or LiveView app, or asks about Sobelow, mix hex.audit, or vulnerabilities in a mix project. A security review of only the current branch's changes is the built-in security-review instead.
 compatibility: Works best with Claude Code or OpenAI Codex; works with any agent that can read files and run shell commands. An Elixir toolchain is recommended; subagent support is optional.
+disable-model-invocation: true
 license: MIT
 metadata:
   forked-from: https://github.com/paraxialio/skills
