@@ -6,3 +6,7 @@ auto_switch = false
 
 [ui]
 mouse_capture = true
+# Wider than the default 26 and 36, so a nested worktree workspace's label
+# fits beside its indent instead of truncating.
+sidebar_width = 32
+sidebar_max_width = 44

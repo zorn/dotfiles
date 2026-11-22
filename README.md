@@ -42,7 +42,7 @@ My [fish](https://fishshell.com) `config.fish`: PATH setup, including asdf's shi
 
 - `conf.d/rustup.fish` — installing rustup
 - `completions/asdf.fish` — `asdf completion fish > ~/.config/fish/completions/asdf.fish`
-- `functions/wt.fish` and `completions/wt.fish` — `wt config shell install`
+- `functions/wt.fish` and `completions/wt.fish` — `bin/link`, which runs `wt config shell install fish`
 
 Secrets and machine-only settings go in `~/.config/fish/local.fish`, which `config.fish` loads if it exists. It lives outside the repo, so it cannot be committed.
 

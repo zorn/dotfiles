@@ -20,8 +20,10 @@ private="$home/.claude/settings.private.json"
 out="$home/link-output"
 failed=0
 
+# wt reads XDG_CONFIG_HOME before HOME, so pin both to the throwaway home.
+# Otherwise the run could write into the real fish config.
 run_link() {
-  HOME="$home" "$repo_root/bin/link" >"$out" 2>&1
+  HOME="$home" XDG_CONFIG_HOME="$home/.config" "$repo_root/bin/link" >"$out" 2>&1
 }
 
 assert() {
@@ -39,6 +41,13 @@ assert() {
 run_link
 assert 'a fresh HOME gets a built file' grep -q '^  built    settings.json' "$out"
 assert 'the build carries tracked keys' jq -e '.statusLine.command' "$settings"
+# CI installs no wt, so these cases run only where wt is on PATH.
+if command -v wt >/dev/null; then
+  assert 'a fresh HOME gets the wt fish function' \
+    test -f "$home/.config/fish/functions/wt.fish"
+  assert 'a fresh HOME gets the wt fish completions' \
+    test -f "$home/.config/fish/completions/wt.fish"
+fi
 
 # A hook command that names a missing file fails on every WebFetch, so check
 # that each one resolves to an executable after the link.

@@ -24,4 +24,17 @@ port="$(wt step eval "{{ (repo ~ '-' ~ branch) | hash_port }}")"
 printf 'PORT=%s\n' "$port" >.env.worktree
 wt config state vars set "port=$port"
 
+# A repo whose .gitignore does not cover .env.worktree would show it as a new
+# file, and an agent could commit it. The exclude file is shared by every
+# worktree of the repo and is never committed.
+exclude="$(git rev-parse --path-format=absolute --git-common-dir)/info/exclude"
+if ! grep -qxF /.env.worktree "$exclude" 2>/dev/null; then
+  mkdir -p "$(dirname "$exclude")"
+  # Without a final newline, the append would join the last pattern.
+  if [ -s "$exclude" ] && [ -n "$(tail -c 1 "$exclude")" ]; then
+    printf '\n' >>"$exclude"
+  fi
+  printf '/.env.worktree\n' >>"$exclude"
+fi
+
 printf 'pre-start: Elixir profile ready in %s (port %s)\n' "$PWD" "$port"

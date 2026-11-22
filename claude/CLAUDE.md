@@ -11,6 +11,8 @@ This means:
 
 Commits and PRs are attributed solely to the human author running the session.
 
+Write pull request titles as Conventional Commits, `type: subject`, even in a repo that does not enforce them. Use one of `fix`, `feat`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, or `revert`, and add a scope in parentheses only when it helps. Start the subject with a lowercase letter, as in `docs: add a first pass at a ubiquitous language glossary`. When a repo's own lint enforces a different title format, the repo's format wins.
+
 ## Production data
 
 When I ask for SQL to run against production, write it to return aggregates: counts, statuses, and other shapes of the data. Do not select names, emails, or other identifying columns unless I ask for them. I can't share production details with you, so a query that needs them to make sense doesn't help me.
@@ -25,9 +27,11 @@ Resolving collapses the thread, so I lose the chance to check the fix against th
 
 ## Worktrees
 
-A linked worktree keeps the branch it was made with. You are in one when the two paths that `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ. worktrunk stores the worktree's port, databases, and Herdr workspace under its branch. A new branch strands them, and `wt remove` cannot clean them up.
+Never switch a linked worktree to another branch. You are in one when the two paths that `git rev-parse --path-format=absolute --git-dir --git-common-dir` prints differ. The worktree's port, databases, and Herdr workspace are stored under its branch. Switching branches strands them, and `wt remove` cannot clean them up. The one exception is switching back to the branch that stores them, when `wt remove` stops and asks for it.
 
-A worktree serves one pull request. Follow-up work usually surfaces after that pull request merges, when verifying the change in production turns up a problem. Before you start new work in a worktree, check its branch's pull request with `gh pr view --json state`. Once it has merged or closed, stop and give me `git fetch && wt herdr <branch> --base origin/<default>` to run from the repo's console, with the repo's default branch filled in and the branch named as `/implement`'s Branch step names it. Basing on the fetched remote brings in the merged change. `wt` otherwise branches off the local default branch, which may be stale, and the console's checkout may sit on another branch. The command opens a new worktree in its own Herdr workspace, where a new session picks up the work.
+A worktree serves one pull request. Before you start new work in a worktree, check its branch's pull request with `gh pr view --json state`. When the branch has no pull request yet, or its pull request is open, the worktree is still in use, so carry on. Once the pull request has merged or closed, stop and give me `git fetch && wt herdr <branch> --base origin/<default>` to run from the repo's console. Fill in the repo's default branch. Name the branch as `/implement`'s Branch step names it.
+
+The `--base origin/<default>` flag brings in the merged change. Without it, `wt` branches off the local default branch, which may be stale, and the console's checkout may sit on another branch. The command opens a new worktree in its own Herdr workspace, where a new session picks up the work.
 
 ## Write to be scanned
 
