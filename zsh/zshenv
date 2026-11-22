@@ -15,3 +15,8 @@ claude() {
 # With EQUALS on, zsh expands a leading `=` to a command path, so that line
 # fails with "=== not found". Nobody here uses `=cmd` on purpose.
 unsetopt EQUALS
+
+# Each project's Docker Postgres accepts the default dev login. Set it here so
+# an agent's psql reaches a database without a password prompt. Each container
+# listens on its own port, so psql still needs -p.
+export PGUSER=postgres PGPASSWORD=postgres # betterleaks:allow
