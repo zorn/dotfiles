@@ -27,7 +27,8 @@ In a linked worktree, the global Worktrees rule governs this step. Check the bra
 
 - **The PR has merged or closed:** stop, and hand over `wt herdr` as that rule says.
 - **The branch names a different issue from the one you were given:** stop and hand over `wt herdr` the same way. Each issue gets its own worktree.
-- **No PR, or the PR is still open, for this issue:** work on the current branch, and skip the commands below.
+- **No PR yet:** work on the current branch, and skip the commands below.
+- **The PR for this issue is still open:** work on the current branch. When the tree is clean and `HEAD` equals the PR's head commit (`gh pr view --json headRefOid`), the build is done and the worktree is back for review, so go straight to step 6. Otherwise local work has not reached the PR yet, so continue from step 3, and it goes through review and push like any other round.
 
 In the primary checkout, branch off updated `main`:
 
@@ -52,11 +53,11 @@ Run `diff-review` against `main`. Reviewing here rather than after pushing is th
 
 Apply what it recommends. Findings arrive as a numbered decision list, and that skill's contract governs how the user's reply is read.
 
-Once those findings are settled, invoke the `code-review` skill yourself at the `high` level. It hunts correctness bugs, which `diff-review` targets only for races between users. Running it here means its fixes land before Copilot and the reviewer see the diff. Use `high` unless the user names another level. Never pick `max` yourself, and never try to launch `ultra`, which only the user can trigger. When the change is large or risky, say so, so the user can run `/code-review ultra`. Apply its findings the same way as `diff-review`'s. This repo's own reviewer is named `diff-review` so that the two invocations cannot be confused.
-
-Move to step 5 only after the `code-review` findings are settled, or the user says to skip the pass.
+Once those findings are settled, invoke the `code-review` skill yourself at the `high` level, or at the level the user names. It hunts correctness bugs, which `diff-review` targets only for races between users. Running it here means its fixes land before Copilot and the reviewer see the diff. When the change is large or risky, suggest that the user run `/code-review ultra`. Apply its findings the same way as `diff-review`'s.
 
 Then list the pages the change touches, so the user can check them by hand without asking. Give each one as a full URL on this worktree's dev server port, with the role to sign in as and what to look for. When the change shows on no page, say so in one line.
+
+Move to step 5 only after the `code-review` findings are settled, or the user says to skip the pass, and the page list is given.
 
 ## 5. Push and open the PR
 
@@ -77,7 +78,7 @@ Monitor(
 
 The script polls until told to stop, so running it in the foreground buys nothing and burns the whole tool timeout while showing you nothing. `Monitor` turns each new item into a notification that arrives while you keep working; `WATCH_SETTLE=1` lets the watch end itself once checks are done and the review has landed, rather than sitting armed until timeout.
 
-It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is canceled — so a crashed job does not read as silence. It remembers what it has already reported, so nothing is announced twice, which also means a second run against the same PR is silent until you delete its state file. Progress goes to stderr, so `Read` the monitor's output file to see elapsed time and the check rollup without waiting for an event.
+It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is canceled — so a crashed job does not read as silence. It remembers what it has already reported in a state file, `${TMPDIR:-/tmp}/pr-feedback-seen-<owner>-<repo>-<pr-number>.txt`, so nothing is announced twice. That file outlives the session and the worktree. When the PR predates this session, delete the file before you start the watcher, so it reports every comment again. Skip a thread whose newest comment is your own reply, and answer any comment that came after it. Progress goes to stderr, so `Read` the monitor's output file to see elapsed time and the check rollup without waiting for an event.
 
 **Evaluate every comment before acting on it. Copilot is a reviewer, not an authority** — it does not know this repo's conventions and has been confidently wrong about them. Declining a comment is a legitimate outcome; ignoring one is not.
 
