@@ -30,6 +30,10 @@ wt config state vars set "port=$port"
 exclude="$(git rev-parse --path-format=absolute --git-common-dir)/info/exclude"
 if ! grep -qxF /.env.worktree "$exclude" 2>/dev/null; then
   mkdir -p "$(dirname "$exclude")"
+  # Without a final newline, the append would join the last pattern.
+  if [ -s "$exclude" ] && [ -n "$(tail -c 1 "$exclude")" ]; then
+    printf '\n' >>"$exclude"
+  fi
   printf '/.env.worktree\n' >>"$exclude"
 fi
 
