@@ -28,7 +28,9 @@ GitHub numbers issues and pull requests from one sequence, so a bare number is o
 
 1. **Check the issue URLs.** An issue URL must name this repo (`gh repo view --json nameWithOwner`). If one names another repo, stop, name that issue, and launch none of the batch. A PR row's repo is checked in step 3.
 
-2. **Check the primary checkout.** It must be on `main` with a clean tree; if not, stop and say what is wrong. Run `git pull --ff-only`, so every worktree starts from the latest `main`.
+2. **Check the primary checkout and its database.** It must be on `main` with a clean tree; if not, stop and say what is wrong. Run `git pull --ff-only`, so every worktree starts from the latest `main`.
+
+   When `.config/wt.toml` calls `hooks/postgres`, each worktree creates its databases in a background step, which fails without telling anyone when Postgres is down. So run `mix ecto.migrations` in the primary checkout first. It connects through the app's own Repo config, so it reaches the database on whatever port the project uses, such as a Docker container's. When it exits non-zero, stop, and ask the user to start the database, usually by starting Docker. A repo without that hook needs no check.
 
 3. **Plan, and wait for "go".** Read each issue with `gh issue view <n> --json title,state`. Give it the agent name `issue-<n>`, and a branch named `zorn/issue-<NNN>-<slug>`, as `/implement`'s Branch step names it. The prefix ties every branch to its issue, so an earlier run is found by the prefix, whatever its slug.
 
@@ -40,7 +42,7 @@ GitHub numbers issues and pull requests from one sequence, so a bare number is o
 
    For a row that is neither skipped nor resumed, check that the planned branch name is unused on GitHub too: `git ls-remote --heads origin <branch>` and `gh pr list --head <branch> --state all`. An issue whose earlier pull request closed or merged gets the same slug again. Reusing it would branch from `main` beside the old remote branch, and `/implement` would find the old pull request and stop. When the name is taken, pick a different slug, for example by adding a word from the issue's title.
 
-   [`scripts/preflight.sh`](scripts/preflight.sh) `<branch> <issue number>` runs every check in this step except the issue's state, and prints a JSON verdict: `clear`, `skip`, `resume`, or `rename`, with its reason and the branch to launch. Run it once per issue row. The rules here say what each verdict means.
+   [`scripts/preflight.sh`](scripts/preflight.sh) `<branch> <issue number>` runs every check in this step except the issue's state and a number repeated across rows, and prints a JSON verdict: `clear`, `skip`, `resume`, or `rename`, with its reason and the branch to launch. Run it once per issue row. The rules here say what each verdict means.
 
    For a PR row, run `scripts/preflight.sh --pr <number or URL>` instead. Its row uses the pull request's branch and the agent name `pr-<number>`. Its verdict is one of three:
 

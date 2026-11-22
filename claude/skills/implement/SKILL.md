@@ -28,7 +28,7 @@ In a linked worktree, the global Worktrees rule governs this step. Check the bra
 - **The PR has merged or closed:** stop, and hand over `wt herdr` as that rule says.
 - **The branch names a different issue from the one you were given:** stop and hand over `wt herdr` the same way. Each issue gets its own worktree.
 - **No PR yet:** work on the current branch, and skip the commands below.
-- **The PR for this issue is still open:** the build is done, and the worktree is back for review. Work on the current branch, and go straight to step 6. Before you start its watcher, delete the watcher's state file for this PR, `${TMPDIR:-/tmp}/pr-feedback-seen-<owner>-<repo>-<pr-number>.txt`. That file outlives the worktree, so an earlier session's watcher may have marked comments as seen that nobody answered. The new watcher then reports every comment again. Skip any thread that already has your reply.
+- **The PR for this issue is still open:** work on the current branch. When the tree is clean and `HEAD` equals the PR's head commit (`gh pr view --json headRefOid`), the build is done and the worktree is back for review, so go straight to step 6. Otherwise local work has not reached the PR yet, so continue from step 3, and it goes through review and push like any other round. Either way, before you start step 6's watcher, delete the watcher's state file for this PR, `${TMPDIR:-/tmp}/pr-feedback-seen-<owner>-<repo>-<pr-number>.txt`. That file outlives the worktree, so an earlier session's watcher may have marked comments as seen that nobody answered. The new watcher then reports every comment again. Skip any thread that already has your reply.
 
 In the primary checkout, branch off updated `main`:
 

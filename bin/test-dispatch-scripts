@@ -133,6 +133,24 @@ echo '{"result":{"agents":[]}}' >"$fake/agents.json"
 echo '[{"number":3,"state":"MERGED","headRefOid":"0000000"}]' >"$fake/prs-feature-a.json"
 check "a merged PR at another commit is not shown" "null" "$(status '.[0].pr')"
 
+# A detached primary checkout prints no branch line, so its record must be
+# skipped by position, not as the first printed row.
+echo '[]' >"$fake/prs-feature-a.json"
+git -C "$primary" checkout -q --detach
+check "a detached primary checkout keeps the first worktree" "feature-a" "$(status '.[0].branch')"
+git -C "$primary" checkout -q main
+
+# An open PR shows in the pr column, but an older PR that holds HEAD still
+# makes the worktree releasable.
+echo "[{\"number\":9,\"state\":\"OPEN\",\"headRefOid\":\"0000000\"},{\"number\":7,\"state\":\"CLOSED\",\"headRefOid\":\"$head\"}]" >"$fake/prs-feature-a.json"
+check "a closed PR that holds HEAD makes it releasable" "yes" "$(status '.[0].releasable')"
+check "the open PR is the one shown" "9" "$(status '.[0].pr.number')"
+echo '[]' >"$fake/prs-feature-a.json"
+
+echo '{"result":{"agents":[{"name":"shell","agent_status":"idle","cwd":null}]}}' >"$fake/agents.json"
+check "an agent with no cwd does not break status" "[]" "$(status '.[0].agents | tostring')"
+echo '{"result":{"agents":[]}}' >"$fake/agents.json"
+
 printf 'preflight.sh\n'
 check "a new branch is clear" "clear zorn/issue-9-new" "$(preflight zorn/issue-9-new 9)"
 check "a branch without the issue prefix is refused" "2" \
@@ -186,6 +204,24 @@ git -C "$primary" push -q origin main:refs/heads/zorn/issue-8-taken
 check "a branch name taken on GitHub needs a rename" "rename zorn/issue-8-taken" "$(preflight zorn/issue-8-taken 8)"
 echo '[{"number":2}]' >"$fake/prs-zorn_issue-8-old.json"
 check "a branch name with an old PR needs a rename" "rename zorn/issue-8-old" "$(preflight zorn/issue-8-old 8)"
+
+# A plain wt remove keeps the local branch, and a re-dispatch can derive the
+# same slug, so a released PR on the planned branch itself still resumes.
+git -C "$primary" branch zorn/issue-7-same "$head"
+git -C "$scratch/teammate" push -q origin "$pushed:refs/heads/zorn/issue-7-same"
+echo '[{"number":21,"headRefName":"zorn/issue-7-same"}]' >"$fake/mine.json"
+check "a released PR on the planned branch resumes" "resume zorn/issue-7-same true" \
+  "$( (cd "$primary" && "$scripts/preflight.sh" zorn/issue-7-same 7) | jq -r '"\(.verdict) \(.branch) \(.fast_forward)"')"
+git -C "$primary" branch -q -D zorn/issue-7-same
+
+echo '[{"number":22,"headRefName":"zorn/issue-7-a"},{"number":23,"headRefName":"zorn/issue-7-b"}]' >"$fake/mine.json"
+check "two resumable open PRs for one issue are skipped" "skip zorn/issue-7-new" "$(preflight zorn/issue-7-new 7)"
+issue7_wt="$scratch/repo.issue-7-b"
+git -C "$primary" worktree add -q -b zorn/issue-7-b "$issue7_wt"
+check "a second open PR with a worktree is skipped" "skip zorn/issue-7-new" "$(preflight zorn/issue-7-new 7)"
+git -C "$primary" worktree remove "$issue7_wt"
+git -C "$primary" branch -q -D zorn/issue-7-b
+echo '[]' >"$fake/mine.json"
 
 printf 'preflight.sh --pr\n'
 echo '{"nameWithOwner":"acme/app"}' >"$fake/repo.json"

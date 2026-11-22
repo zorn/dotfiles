@@ -20,12 +20,12 @@
 # The branch prefix zorn/issue-<NNN>- ties every branch to its issue, so an
 # earlier run is found by the prefix, whatever its slug. The verdicts follow
 # Launch step 3 of the dispatch skill:
-#   skip    the planned branch or its worktree exists here, an agent already
-#           has the name, an open PR of mine for the issue has a worktree or a
-#           local branch with commits origin lacks, or another local branch
-#           for the issue exists
-#   resume  an open PR of mine for the issue has no worktree and no live
-#           agent, so it was released
+#   skip    an agent already has the name; an open PR of mine for the issue
+#           has a worktree or a local branch with commits origin lacks; more
+#           than one open PR of mine for the issue is resumable; or, with no
+#           such PR, the planned branch or another branch for the issue exists
+#   resume  exactly one open PR of mine for the issue has no worktree and no
+#           live agent, so it was released
 #   rename  the planned branch name is taken on GitHub by an earlier branch or PR
 #   clear   none of the above
 #
@@ -124,21 +124,33 @@ other_local="$( { git branch --list "$prefix*" --format='%(refname:short)'; grep
 
 verdict=clear reason="" launch="$branch" fast_forward=false
 
-if branch_taken "$branch"; then
-  verdict=skip reason="branch $branch already exists here"
-elif agent_live "$agent"; then
-  verdict=skip reason="an agent named $agent is already live"
-elif [ "$(jq length <<<"$my_prs")" -gt 0 ]; then
-  number="$(jq -r '.[0].number' <<<"$my_prs")"
-  head_ref="$(jq -r '.[0].headRefName' <<<"$my_prs")"
+# Open PRs come before the planned branch: a plain wt remove keeps the local
+# branch, and a re-dispatch can derive the same slug, so a branch that exists
+# here may belong to a released PR that should resume.
+dispatched="" resumable=()
+while read -r number head_ref; do
+  [ -n "$head_ref" ] || continue
   if has_worktree "$head_ref"; then
-    verdict=skip reason="open PR #$number is on $head_ref, and its worktree exists"
+    dispatched="open PR #$number is on $head_ref, and its worktree exists"
   elif [ "$(leftover "$head_ref")" = ahead ]; then
-    verdict=skip reason="open PR #$number is on $head_ref, and that local branch has commits origin lacks"
+    dispatched="open PR #$number is on $head_ref, and that local branch has commits origin lacks"
   else
-    [ "$(leftover "$head_ref")" = behind ] && fast_forward=true
-    verdict=resume reason="open PR #$number is on $head_ref and was released; the resumed worktree gets new databases" launch="$head_ref"
+    resumable+=("$number $head_ref")
   fi
+done <<<"$(jq -r '.[] | "\(.number) \(.headRefName)"' <<<"$my_prs")"
+
+if agent_live "$agent"; then
+  verdict=skip reason="an agent named $agent is already live"
+elif [ -n "$dispatched" ]; then
+  verdict=skip reason="$dispatched"
+elif [ "${#resumable[@]}" -gt 1 ]; then
+  verdict=skip reason="several open PRs of mine are for issue #$issue; release or close all but one"
+elif [ "${#resumable[@]}" -eq 1 ]; then
+  read -r number head_ref <<<"${resumable[0]}"
+  [ "$(leftover "$head_ref")" = behind ] && fast_forward=true
+  verdict=resume reason="open PR #$number is on $head_ref and was released; the resumed worktree gets new databases" launch="$head_ref"
+elif branch_taken "$branch"; then
+  verdict=skip reason="branch $branch already exists here"
 elif [ -n "$other_local" ]; then
   verdict=skip reason="branch $other_local for issue #$issue already exists here"
 elif [ -n "$(git ls-remote --heads origin "$branch")" ] ||
