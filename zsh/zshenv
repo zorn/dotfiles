@@ -10,3 +10,8 @@ export DO_NOT_TRACK=1
 claude() {
   env -u DO_NOT_TRACK claude "$@"
 }
+
+# Claude Code's shell commands often print separators such as `echo ====`.
+# With EQUALS on, zsh expands a leading `=` to a command path, so that line
+# fails with "=== not found". Nobody here uses `=cmd` on purpose.
+unsetopt EQUALS

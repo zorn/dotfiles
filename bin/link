@@ -6,7 +6,8 @@
 # Idempotent: safe to re-run after adding a new skill. Refuses to touch
 # anything that already exists as a real file or directory, so a bad run
 # can't eat config that isn't tracked here yet. The built settings file is
-# rewritten only while it still matches the last build.
+# rewritten only while it still matches the last build. worktrunk's generated
+# fish integration is the other exception, and it is regenerated on each run.
 
 set -euo pipefail
 
@@ -161,6 +162,18 @@ link_path "$repo_root/espanso/match/base.yml" \
 # there, and installers drop generated functions and completions beside it.
 link_path "$repo_root/fish/config.fish" \
   "$HOME/.config/fish/config.fish" 'fish/config.fish'
+
+# worktrunk's fish function and completions. They are generated to match the
+# installed wt, so tracking them would leave a stale copy after an upgrade.
+# Installing here instead means a new machine cannot forget the step. --yes
+# skips the prompt, which otherwise cancels the install without a terminal.
+if ! command -v wt >/dev/null; then
+  printf '  NOTE     wt fish integration (wt is not installed; re-run after installing it)\n'
+elif wt_output="$(wt config shell install fish --yes 2>&1)"; then
+  printf '  ok       wt fish integration\n'
+else
+  printf '  WARN     wt fish integration failed to install:\n%s\n' "$wt_output"
+fi
 
 # git's config and global ignore, at the XDG paths git reads by default. Link
 # the files, not ~/.config/git itself: git and credential helpers write machine

@@ -2,7 +2,7 @@
 
 Ecto/Postgres-first. The concern *names* — N+1, unbounded query, missing index, missing transaction — transfer off Ecto even where the specific *fix* does not.
 
-Three concerns, each keyed to a signal in the diff: migration files trigger migration safety; query and `Repo.` code trigger transaction consistency and query performance.
+Four concerns, each keyed to a signal in the diff: migration files trigger migration safety and migration reversibility; query and `Repo.` code trigger transaction consistency and query performance.
 
 ## Migration safety
 
@@ -16,6 +16,17 @@ Defers to project tooling. If the project depends on [`excellent_migrations`](ht
 - Backfill inside the migration transaction, or unthrottled — locks rows for the whole migration, or spikes DB CPU. → `@disable_ddl_transaction`, keyset-batch with `update_all`, sleep between batches.
 - Live schema module used in a data migration — the schema drifts from the table and breaks re-runs. → raw SQL or an inline snapshot schema; keep backfills in their own file, with `flush()` between DDL and data.
 - `json` column — no equality operator, breaks `SELECT DISTINCT` and comparisons. → use `jsonb`.
+
+## Migration reversibility
+
+Always applies, even when the migration-safety deferral above skips that concern. Safety tooling such as `excellent_migrations` flags unsafe DDL but does not check that a migration rolls back, and a `change` migration hides an irreversible step until someone runs `mix ecto.rollback`.
+
+- `execute/1` inside `change` — Ecto cannot reverse raw SQL, so the rollback raises. → `execute/2` with the down SQL, or split into `up` and `down`.
+- `remove` with no type inside `change` — Ecto cannot re-add a column it knows nothing about. → `remove :field, :type, opts`.
+- `modify` with no `:from` inside `change` — Ecto cannot restore the old type or options. → `modify :field, :new_type, from: :old_type`.
+- `drop table` or `drop_if_exists` inside `change` — the table's definition is gone, so nothing can recreate it. → `up` and `down`, with `down` recreating the table.
+- `up` with a `down` that does not undo all of it — the rollback runs but leaves a column, index, or constraint behind. → make `down` the exact mirror of `up`.
+- An irreversible migration with no explicit `down` — a rollback fails with Ecto's generic error, or silently does nothing. → when the change truly cannot be undone, such as dropping a column that holds data, write a `down` that raises `Ecto.MigrationError` with the reason.
 
 ## Transaction consistency
 

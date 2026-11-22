@@ -9,8 +9,7 @@ The hooks run only when `wt` creates or removes a worktree. A worktree made anot
 ## Set up each machine once
 
 1. Install worktrunk and jq: `brew install worktrunk jq`. The teardown uses jq to find a worktree's Herdr workspace.
-2. Run `bin/link` from this repo. It links `config.toml` and `hooks/` into `~/.config/worktrunk/`. Run it before anything else writes a worktrunk config. `bin/link` never overwrites a real file, so it would skip the config, and the tracked config would never load.
-3. Run `wt config shell install fish`. It lets `wt switch` change your shell into the new worktree. It creates `functions/wt.fish` and `completions/wt.fish` under `~/.config/fish/`. This repo does not track those files, so repeat this step on each machine.
+2. Run `bin/link` from this repo. It links `config.toml` and `hooks/` into `~/.config/worktrunk/`. Run it before anything else writes a worktrunk config. `bin/link` never overwrites a real file, so it would skip the config, and the tracked config would never load. It also runs `wt config shell install fish`, which lets `wt switch` change your shell into the new worktree. That creates `functions/wt.fish` and `completions/wt.fish` under `~/.config/fish/`. This repo does not track those generated files, so install worktrunk before you run `bin/link`.
 
 The first time `wt` runs a repo's own hooks, it asks you to approve them.
 
