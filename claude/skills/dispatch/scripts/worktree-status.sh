@@ -19,7 +19,8 @@
 #               that holds HEAD: its head is HEAD or a descendant of it. A
 #               merged PR that does not hold HEAD belongs to an earlier branch
 #               with the same name, so it is not shown.
-#   checks      {pass, fail, pending, skipping, cancel} counts, or null
+#   checks      {pass, fail, pending, skipping, cancel} counts, "unavailable"
+#               when the lookup failed, or null with no PR
 #   dirty       the number of `git status --porcelain` lines
 #   releasable  "yes", or the first reason Release would refuse it
 
@@ -77,9 +78,18 @@ while IFS=$'\t' read -r path branch; do
   checks=null
   number="$(jq -r '.number // empty' <<<"$pr")"
   if [ -n "$number" ]; then
-    # gh exits non-zero when a check failed or is pending; the JSON is still complete.
-    checks="$(gh pr checks "$number" --json bucket 2>/dev/null || true)"
-    checks="$(jq 'reduce .[] as $c ({pass: 0, fail: 0, pending: 0, skipping: 0, cancel: 0}; .[$c.bucket] += 1)' <<<"${checks:-[]}")"
+    # gh exits non-zero when a check failed or is pending, and its JSON is still
+    # complete. A failed lookup prints no JSON, so it reads "unavailable" rather
+    # than as a PR with nothing failing.
+    checks_err="$(mktemp)"
+    checks_raw="$(gh pr checks "$number" --json bucket 2>"$checks_err" || true)"
+    if grep -q 'no checks reported' "$checks_err"; then checks_raw='[]'; fi
+    rm -f "$checks_err"
+    if jq -e 'type == "array"' <<<"$checks_raw" >/dev/null 2>&1; then
+      checks="$(jq 'reduce .[] as $c ({pass: 0, fail: 0, pending: 0, skipping: 0, cancel: 0}; .[$c.bucket] += 1)' <<<"$checks_raw")"
+    else
+      checks='"unavailable"'
+    fi
   fi
 
   # Release's three checks, in the order the skill lists them.

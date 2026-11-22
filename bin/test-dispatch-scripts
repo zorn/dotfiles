@@ -38,9 +38,14 @@ case "$1 $2" in
       shift
     done
     if [ -n "$author" ]; then cat "$fake/mine.json" 2>/dev/null || echo '[]'
+    elif [ -e "$fake/prs-${head//\//_}.fail" ]; then echo 'HTTP 502' >&2; exit 1
     else cat "$fake/prs-${head//\//_}.json" 2>/dev/null || echo '[]'; fi
     ;;
-  'pr checks') cat "$fake/checks-$3.json" ;;
+  'pr checks')
+    if [ -e "$fake/checks-$3.json" ]; then cat "$fake/checks-$3.json"
+    elif [ -e "$fake/checks-$3.none" ]; then echo "no checks reported on the 'x' branch" >&2; exit 1
+    else echo 'HTTP 401: Bad credentials' >&2; exit 1; fi
+    ;;
   'pr view') echo "$3" >"$fake/pr-view-ref"; cat "$fake/pr-view.json" ;;
   'repo view') cat "$fake/repo.json" ;;
   'api user') cat "$fake/me.json" ;;
@@ -50,7 +55,7 @@ FAKE
 cat >"$scratch/bin/herdr" <<'FAKE'
 #!/usr/bin/env bash
 case "$1 $2" in
-  'agent list') cat "$FAKE_DIR/agents.json" ;;
+  'agent list') [ ! -e "$FAKE_DIR/herdr.fail" ] || exit 1; cat "$FAKE_DIR/agents.json" ;;
   'workspace list') cat "$FAKE_DIR/workspaces.json" ;;
   *) printf 'unexpected herdr call: %s\n' "$*" >&2; exit 1 ;;
 esac
@@ -147,6 +152,14 @@ check "a closed PR that holds HEAD makes it releasable" "yes" "$(status '.[0].re
 check "the open PR is the one shown" "9" "$(status '.[0].pr.number')"
 echo '[]' >"$fake/prs-feature-a.json"
 
+echo '[{"number":7,"state":"OPEN","headRefOid":"0000000"}]' >"$fake/prs-feature-a.json"
+mv "$fake/checks-7.json" "$fake/checks-7.saved"
+check "a failed checks lookup reads unavailable" "unavailable" "$(status '.[0].checks')"
+touch "$fake/checks-7.none"
+check "a PR with no checks counts zero" "0" "$(status '.[0].checks.fail')"
+rm "$fake/checks-7.none"; mv "$fake/checks-7.saved" "$fake/checks-7.json"
+echo '[]' >"$fake/prs-feature-a.json"
+
 echo '{"result":{"agents":[{"name":"shell","agent_status":"idle","cwd":null}]}}' >"$fake/agents.json"
 check "an agent with no cwd does not break status" "[]" "$(status '.[0].agents | tostring')"
 echo '{"result":{"agents":[]}}' >"$fake/agents.json"
@@ -221,6 +234,30 @@ git -C "$primary" worktree add -q -b zorn/issue-7-b "$issue7_wt"
 check "a second open PR with a worktree is skipped" "skip zorn/issue-7-new" "$(preflight zorn/issue-7-new 7)"
 git -C "$primary" worktree remove "$issue7_wt"
 git -C "$primary" branch -q -D zorn/issue-7-b
+echo '[]' >"$fake/mine.json"
+
+# A failed lookup must stop preflight, never read as "nothing found".
+touch "$fake/herdr.fail"
+check "a failed Herdr lookup aborts preflight" "fail" \
+  "$( (cd "$primary" && "$scripts/preflight.sh" zorn/issue-6-new 6) >/dev/null 2>&1 && echo ok || echo fail)"
+rm "$fake/herdr.fail"
+touch "$fake/prs-zorn_issue-6-new.fail"
+check "a failed old-PR lookup aborts preflight" "fail" \
+  "$( (cd "$primary" && "$scripts/preflight.sh" zorn/issue-6-new 6) >/dev/null 2>&1 && echo ok || echo fail)"
+rm "$fake/prs-zorn_issue-6-new.fail"
+
+# wt herdr-resume builds from origin/<branch>, which a fork PR does not have.
+echo '[{"number":24,"headRefName":"zorn/issue-6-fork","isCrossRepository":true}]' >"$fake/mine.json"
+check "my fork PR for the issue is skipped, not resumed" "skip zorn/issue-6-new" "$(preflight zorn/issue-6-new 6)"
+
+# A released PR on one branch beside a worktree on another branch for the
+# same issue means the issue is still being worked on.
+issue6_wt="$scratch/repo.issue-6-current"
+git -C "$primary" worktree add -q -b zorn/issue-6-current "$issue6_wt"
+echo '[{"number":25,"headRefName":"zorn/issue-6-old","isCrossRepository":false}]' >"$fake/mine.json"
+check "a released PR beside another worktree for the issue is skipped" "skip zorn/issue-6-new" "$(preflight zorn/issue-6-new 6)"
+git -C "$primary" worktree remove "$issue6_wt"
+git -C "$primary" branch -q -D zorn/issue-6-current
 echo '[]' >"$fake/mine.json"
 
 printf 'preflight.sh --pr\n'

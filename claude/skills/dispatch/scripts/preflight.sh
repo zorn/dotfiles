@@ -72,7 +72,11 @@ leftover() {
   elif git merge-base --is-ancestor "refs/heads/$1" "refs/remotes/origin/$1" 2>/dev/null; then echo behind
   else echo ahead; fi
 }
-agent_live() { herdr agent list | jq -e --arg a "$1" 'any(.result.agents[]; .name == $a)' >/dev/null; }
+# Read Herdr once, outside any condition, so a failed lookup aborts the run
+# rather than reading as "no such agent".
+agents_json="$(herdr agent list)"
+jq -e '.result.agents | type == "array"' <<<"$agents_json" >/dev/null
+agent_live() { jq -e --arg a "$1" 'any(.result.agents[]; .name == $a)' <<<"$agents_json" >/dev/null; }
 
 if [ -n "$pr_ref" ]; then
   pr="$(gh pr view "$pr_ref" --json number,url,state,headRefName,isCrossRepository,title,author)"
@@ -116,11 +120,17 @@ if [ -n "$pr_ref" ]; then
 fi
 
 # --author @me keeps a teammate's PR on a same-named branch from being resumed.
-my_prs="$(gh pr list --state open --author @me --limit 200 --json number,headRefName |
+my_prs="$(gh pr list --state open --author @me --limit 200 --json number,headRefName,isCrossRepository |
   jq --arg p "$prefix" 'map(select(.headRefName | startswith($p)))')"
-# Any other local branch or worktree for the issue, such as one with an older slug.
-other_local="$( { git branch --list "$prefix*" --format='%(refname:short)'; grep -F "$prefix" <<<"$worktree_branches" || true; } |
-  grep -vxF "$branch" | head -n 1 || true)"
+# Any other local branch or worktree for the issue, such as one with an older
+# slug. The arguments are branches that do not count.
+other_local() {
+  { git branch --list "$prefix*" --format='%(refname:short)'; grep -F "$prefix" <<<"$worktree_branches" || true; } |
+    grep -vxF -e "$1" -e "${2:-$1}" | head -n 1 || true
+}
+# Checked assignments, so a failed lookup aborts instead of reading as "unused".
+remote_head="$(git ls-remote --heads origin "$branch")"
+old_prs="$(gh pr list --head "$branch" --state all --json number | jq length)"
 
 verdict=clear reason="" launch="$branch" fast_forward=false
 
@@ -128,16 +138,19 @@ verdict=clear reason="" launch="$branch" fast_forward=false
 # branch, and a re-dispatch can derive the same slug, so a branch that exists
 # here may belong to a released PR that should resume.
 dispatched="" resumable=()
-while read -r number head_ref; do
+while read -r number head_ref cross; do
   [ -n "$head_ref" ] || continue
-  if has_worktree "$head_ref"; then
+  # wt herdr-resume builds from origin/<branch>, and origin has no fork branch.
+  if [ "$cross" = true ]; then
+    dispatched="open PR #$number for issue #$issue comes from a fork, so origin has no $head_ref"
+  elif has_worktree "$head_ref"; then
     dispatched="open PR #$number is on $head_ref, and its worktree exists"
   elif [ "$(leftover "$head_ref")" = ahead ]; then
     dispatched="open PR #$number is on $head_ref, and that local branch has commits origin lacks"
   else
     resumable+=("$number $head_ref")
   fi
-done <<<"$(jq -r '.[] | "\(.number) \(.headRefName)"' <<<"$my_prs")"
+done <<<"$(jq -r '.[] | "\(.number) \(.headRefName) \(.isCrossRepository)"' <<<"$my_prs")"
 
 if agent_live "$agent"; then
   verdict=skip reason="an agent named $agent is already live"
@@ -145,16 +158,17 @@ elif [ -n "$dispatched" ]; then
   verdict=skip reason="$dispatched"
 elif [ "${#resumable[@]}" -gt 1 ]; then
   verdict=skip reason="several open PRs of mine are for issue #$issue; release or close all but one"
+elif [ "${#resumable[@]}" -eq 1 ] && read -r number head_ref <<<"${resumable[0]}" &&
+  [ -n "$(other_local "$head_ref" "$branch")" ]; then
+  verdict=skip reason="branch $(other_local "$head_ref" "$branch") for issue #$issue exists here beside released PR #$number"
 elif [ "${#resumable[@]}" -eq 1 ]; then
-  read -r number head_ref <<<"${resumable[0]}"
   [ "$(leftover "$head_ref")" = behind ] && fast_forward=true
   verdict=resume reason="open PR #$number is on $head_ref and was released; the resumed worktree gets new databases" launch="$head_ref"
 elif branch_taken "$branch"; then
   verdict=skip reason="branch $branch already exists here"
-elif [ -n "$other_local" ]; then
-  verdict=skip reason="branch $other_local for issue #$issue already exists here"
-elif [ -n "$(git ls-remote --heads origin "$branch")" ] ||
-  [ "$(gh pr list --head "$branch" --state all --json number | jq length)" -gt 0 ]; then
+elif [ -n "$(other_local "$branch")" ]; then
+  verdict=skip reason="branch $(other_local "$branch") for issue #$issue already exists here"
+elif [ -n "$remote_head" ] || [ "$old_prs" -gt 0 ]; then
   verdict=rename reason="$branch is taken on GitHub by an earlier branch or PR; pick another slug"
 fi
 

@@ -35,7 +35,7 @@ GitHub numbers issues and pull requests from one sequence, so a bare number is o
 
 3. **Plan, and wait for "go".** Read each issue with `gh issue view <n> --json title,state`. Give it the agent name `issue-<n>`, and a branch named `zorn/issue-<NNN>-<slug>`, as `/implement`'s Branch step names it. The prefix ties every branch to its issue, so an earlier run is found by the prefix, whatever its slug.
 
-   Show one row per issue with its number, title, agent name, and branch. Mark a row "skip" when its issue is closed, when its number repeats an earlier row's, or when it is already dispatched. It is already dispatched when any of these exists:
+   Show one row per issue with its number, title, agent name, and branch. Mark a row "skip" when its issue is closed, or when it is already dispatched. It is already dispatched when any of these exists:
 
    - **The planned branch, or any local branch or worktree with the issue's prefix:** `git branch --list 'zorn/issue-<NNN>-*'`, `git worktree list`.
    - **A live agent with the same name:** `herdr agent list`.
@@ -43,7 +43,7 @@ GitHub numbers issues and pull requests from one sequence, so a bare number is o
 
    For a row that is neither skipped nor resumed, check that the planned branch name is unused on GitHub too: `git ls-remote --heads origin <branch>` and `gh pr list --head <branch> --state all`. An issue whose earlier pull request closed or merged gets the same slug again. Reusing it would branch from `main` beside the old remote branch, and `/implement` would find the old pull request and stop. When the name is taken, pick a different slug, for example by adding a word from the issue's title.
 
-   [`scripts/preflight.sh`](scripts/preflight.sh) `<branch> <issue number>` runs every check in this step except the issue's state and a number repeated across rows, and prints a JSON verdict: `clear`, `skip`, `resume`, or `rename`, with its reason and the branch to launch. Run it once per issue row. The rules here say what each verdict means.
+   [`scripts/preflight.sh`](scripts/preflight.sh) `<branch> <issue number>` runs every check in this step except the issue's state and the collisions between rows below, and prints a JSON verdict: `clear`, `skip`, `resume`, or `rename`, with its reason and the branch to launch. Run it once per issue row. The rules here say what each verdict means.
 
    For a PR row, run `scripts/preflight.sh --pr <number or URL>` instead. Its row uses the pull request's branch and the agent name `pr-<number>`. Its verdict is one of three:
 
@@ -53,7 +53,9 @@ GitHub numbers issues and pull requests from one sequence, so a bare number is o
 
    To get `/implement`'s review feedback loop on your own pull request, name its issue rather than the pull request.
 
-   The user may edit an issue row's slug in the table, but not its `zorn/issue-<NNN>-` prefix. A "resume" row or a PR row keeps its pull request's branch. `/implement` keeps the branch its worktree was made with, so the name chosen here is final. Wait for "go" before you create anything, then launch only the rows not marked "skip".
+   The user may edit an issue row's slug in the table, but not its `zorn/issue-<NNN>-` prefix. A "resume" row or a PR row keeps its pull request's branch. `/implement` keeps the branch its worktree was made with, so the name chosen here is final.
+
+   Preflight sees one row at a time, so it cannot see two rows that collide. After every row has its verdict, and again after any edit, mark a row "skip" when its branch or agent name repeats an earlier launchable row's. A pull request given by number and by URL, or an issue beside its own released pull request, both produce such a pair. Wait for "go" before you create anything, then launch only the rows not marked "skip".
 
 4. **Create each worktree.** Run `wt herdr <branch>`. For a "resume" row or a PR row, run `wt herdr-resume <branch>` instead. `wt herdr` passes `--create`, which ignores the remote branch and starts a new one from `main` without the pull request's commits. When preflight reported `fast_forward: true`, first run `git fetch origin <branch>:<branch>`, so `wt herdr-resume` builds on the pull request's commits rather than a stale local branch. Either command's last line is JSON. Read the new pane's ID from `.result.root_pane.pane_id`. If `wt` asks to approve the repo's hooks, stop, and have the user run one `wt herdr` by hand to approve them.
 
@@ -86,7 +88,7 @@ Build the table once for each request, and do not poll. Run [`scripts/worktree-s
 | Branch | `branch` |
 | Agent | `agents`, named with their status; the agent name identifies the issue or pull request; "none" when empty |
 | Pull request | `pr`, or "none" |
-| Checks | `checks`, the counts by bucket, when a pull request exists |
+| Checks | `checks`, the counts by bucket, or "unavailable" when the lookup failed |
 | Releasable | `releasable` |
 
 Status is done when every linked worktree has a row with all six columns filled, or marked "none".
@@ -105,7 +107,7 @@ Release removes a worktree whose work is safe on GitHub, so the user can move on
 
    `scripts/worktree-status.sh <branch>` applies all three, and its `releasable` field is `yes` or the first reason that fails. Leave any worktree that fails a check, and report the reason. Never push, commit, or stash to make one pass, and never pass `-f`. Those choices are the user's.
 
-3. **Wait for "go", then remove.** Show the list. When the repo has per-worktree databases, say that releasing drops them. Wait for "go", because `-D` deletes local branches that are not merged. Then, for each one in turn, run step 2's three checks again with `scripts/worktree-status.sh <branch>`. An idle agent can wake during the wait, for example on review feedback, and commit without pushing. A clean tree does not stop `wt remove`, so `-D` would delete that commit. Skip any worktree that now fails, and report why. Otherwise remove it as the removal rule says, with `wt remove --foreground -D <branch>`.
+3. **Wait for "go", then remove.** Show the list. When the repo has per-worktree databases, say that releasing drops them. Wait for "go", because `-D` deletes local branches that are not merged. Then, for each one in turn, close its Herdr workspace with `herdr workspace close <id>` first, which stops its agent. An idle agent can wake during the wait, for example on review feedback, and commit without pushing, and a clean tree does not stop `wt remove`, so `-D` would delete that commit. With the agent stopped, run step 2's checks again with `scripts/worktree-status.sh <branch>`, and nothing can change between that check and the removal. Skip any worktree that now fails, report why, and say that `herdr worktree open --path <path>` reopens it. Otherwise remove it as the removal rule says, with `wt remove --foreground -D <branch>`.
 
 Release is done when every named worktree is removed or reported with its reason for staying. For each released worktree whose pull request is open, tell the user that `/dispatch <issue>` resumes it, or `/dispatch <PR>` for a PR row.
 
