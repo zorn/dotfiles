@@ -52,9 +52,9 @@ Run `diff-review` against `main`. Reviewing here rather than after pushing is th
 
 Apply what it recommends. Findings arrive as a numbered decision list, and that skill's contract governs how the user's reply is read.
 
-Then stop and ask the user to run `/code-review`. It hunts correctness bugs, which `diff-review` targets only for races between users. Running it here means its fixes land before Copilot and the reviewer see the diff. Do not run it yourself: the user picks its effort level, and the higher levels are costly. When the change is large or risky, say so, so the user can pick a higher level. Apply its findings the same way as `diff-review`'s. This repo's own reviewer is named `diff-review` so that the two invocations cannot be confused.
+Once those findings are settled, invoke the `code-review` skill yourself at the `high` level. It hunts correctness bugs, which `diff-review` targets only for races between users. Running it here means its fixes land before Copilot and the reviewer see the diff. Use `high` unless the user names another level. Never pick `max` yourself, and never try to launch `ultra`, which only the user can trigger. When the change is large or risky, say so, so the user can run `/code-review ultra`. Apply its findings the same way as `diff-review`'s. This repo's own reviewer is named `diff-review` so that the two invocations cannot be confused.
 
-Move to step 5 only after the user reports that `/code-review` has run and its findings are settled, or says to skip it. Do not proceed as though the pass happened when it did not.
+Move to step 5 only after the `code-review` findings are settled, or the user says to skip the pass.
 
 Then list the pages the change touches, so the user can check them by hand without asking. Give each one as a full URL on this worktree's dev server port, with the role to sign in as and what to look for. When the change shows on no page, say so in one line.
 
