@@ -28,13 +28,20 @@
 #                        automatic review usually lands inside two minutes,
 #                        which is exactly when a slow poll is most annoying
 #   WATCH_SETTLE         set to 1 to exit once the PR has gone quiet: the check
-#                        list fetched successfully with nothing pending, at
-#                        least one review in, no new item for
-#                        WATCH_SETTLE_POLLS polls, and WATCH_FAST_WINDOW
-#                        elapsed. Off by default, because there is no signal
+#                        list fetched successfully with nothing pending, no
+#                        new item for WATCH_SETTLE_POLLS polls, and
+#                        WATCH_FAST_WINDOW elapsed. It also needs a review
+#                        summary or an inline comment from another account to
+#                        arrive during this run. Without one, it settles once
+#                        WATCH_REVIEW_WAIT elapses and reports "no review
+#                        arrived". Off by default, because there is no signal
 #                        that says "no more feedback is coming" and guessing
 #                        wrong ends the watch early.
 #   WATCH_SETTLE_POLLS   consecutive quiet polls before settling (default 2)
+#   WATCH_REVIEW_WAIT    seconds to wait for a review before settling without
+#                        one (default 600). It is longer than the fast window,
+#                        because Copilot sometimes reviews after two minutes.
+#                        Keep it inside the caller's Monitor timeout.
 #
 # Each item is reported once: ids seen are recorded in a state file, so
 # re-running does not replay a review you have already worked. That also means
@@ -45,11 +52,15 @@ set -uo pipefail
 
 PR="${1:?usage: watch-pr-feedback.sh <pr-number> [repo]  (WATCH_* env vars: see the header of this file)}"
 REPO="${2:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
+# The signed-in account, whose own thread replies are not a review. Empty when
+# the lookup fails, which counts every author.
+ME="$(gh api user --jq .login 2>/dev/null || true)"
 INTERVAL="${WATCH_INTERVAL:-30}"
 FAST_INTERVAL="${WATCH_FAST_INTERVAL:-10}"
 FAST_WINDOW="${WATCH_FAST_WINDOW:-120}"
 SETTLE="${WATCH_SETTLE:-0}"
 SETTLE_POLLS="${WATCH_SETTLE_POLLS:-2}"
+REVIEW_WAIT="${WATCH_REVIEW_WAIT:-600}"
 
 STATE="${TMPDIR:-/tmp}/pr-feedback-seen-$(printf '%s' "$REPO" | tr '/' '-')-$PR.txt"
 touch "$STATE"
@@ -88,9 +99,16 @@ elapsed_clock() { printf '%02d:%02d' "$(($1 / 60))" "$(($1 % 60))"; }
 started=$(date +%s)
 polls=0
 quiet_polls=0
+# Reviews that arrived during this run. The state file outlives a run, so its
+# totals would let a re-armed watch settle on the review it already reported.
+reviews_arrived=0
 
 status "watching $REPO#$PR — state file $STATE"
 end_status_line
+if [ -z "$ME" ]; then
+  status "could not look up the signed-in account, so your own replies count as reviews"
+  end_status_line
+fi
 
 while true; do
   polls=$((polls + 1))
@@ -112,18 +130,24 @@ while true; do
     checks_json='[]'
   fi
 
+  # A failed feedback fetch is not a quiet poll: counting it as one would let
+  # the watch settle, even as "no review arrived", with a review unread.
+  feeds_ok=1
   {
     # Inline review comments — the ones that need a threaded reply.
     gh api --paginate "repos/$REPO/pulls/$PR/comments?per_page=100" \
-      --jq '.[] | "c\(.id)|\(.user.login) — \(.path):\(.line // .original_line // 0) — id=\(.id) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
+      --jq '.[] | "c\(.id)|\(.user.login) — \(.path):\(.line // .original_line // 0) — id=\(.id) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
-    # Review summaries (Copilot posts its overview as one of these).
+    # Review summaries (Copilot posts its overview as one of these). A
+    # bodyless COMMENTED review is skipped, because its inline comments
+    # already report it. A bodyless approval or change request has nothing
+    # else to report it.
     gh api --paginate "repos/$REPO/pulls/$PR/reviews?per_page=100" \
-      --jq '.[] | select((.body // "") != "") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
+      --jq '.[] | select((.body // "") != "" or .state != "COMMENTED") | "r\(.id)|\(.user.login) — REVIEW \(.state) — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
     # Top-level PR conversation.
     gh api --paginate "repos/$REPO/issues/$PR/comments?per_page=100" \
-      --jq '.[] | "i\(.id)|\(.user.login) — COMMENT — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null
+      --jq '.[] | "i\(.id)|\(.user.login) — COMMENT — \(.body | gsub("\r?\n"; " "))"' 2>/dev/null || feeds_ok=0
 
     # A crashed or cancelled job must not read as silence, so both are
     # reported. "skipping" is not: a skipped check is almost always a
@@ -144,10 +168,16 @@ while true; do
       end_status_line
       printf '%s\n' "$rest" | truncate_line
       new_count=$((new_count + 1))
+      # Inline comments count as a review: a review made only of them has an
+      # empty summary body, so it never records an `r` id.
+      author="${rest%% — *}"
+      case "$id" in
+        c* | r*) [ "$author" = "$ME" ] || reviews_arrived=$((reviews_arrived + 1)) ;;
+      esac
     fi
   done <"$ITEMS"
 
-  if [ "$new_count" -eq 0 ]; then
+  if [ "$new_count" -eq 0 ] && [ "$feeds_ok" -eq 1 ]; then
     quiet_polls=$((quiet_polls + 1))
   else
     quiet_polls=0
@@ -179,15 +209,21 @@ while true; do
     [ "$checks_ok" -eq 1 ] &&
     [ "$elapsed" -ge "$FAST_WINDOW" ] &&
     [ "${pending:-1}" -eq 0 ] &&
-    [ "${reviews_seen:-0}" -gt 0 ] &&
     [ "$quiet_polls" -ge "$SETTLE_POLLS" ]; then
-    end_status_line
-    printf 'WATCH SETTLED — checks: %s; %s inline, %s review(s), %s comment(s); quiet for %d polls\n' \
-      "$rollup" "$(seen_count c)" "$reviews_seen" "$(seen_count i)" "$quiet_polls"
-    exit 0
+    if [ "$reviews_arrived" -gt 0 ]; then
+      end_status_line
+      printf 'WATCH SETTLED — checks: %s; %s inline, %s review(s), %s comment(s); quiet for %d polls\n' \
+        "$rollup" "$(seen_count c)" "$reviews_seen" "$(seen_count i)" "$quiet_polls"
+      exit 0
+    elif [ "$elapsed" -ge "$REVIEW_WAIT" ]; then
+      end_status_line
+      printf 'WATCH SETTLED — checks: %s; no review arrived in %s; %s comment(s)\n' \
+        "$rollup" "$(elapsed_clock "$elapsed")" "$(seen_count i)"
+      exit 0
+    fi
   fi
 
-  status "[$(elapsed_clock "$elapsed")] poll $polls · $(seen_count c) inline, $reviews_seen review(s), $(seen_count i) comment(s) · checks: $rollup · next in ${sleep_for}s"
+  status "[$(elapsed_clock "$elapsed")] poll $polls · $(seen_count c) inline, $reviews_seen review(s), $(seen_count i) comment(s)$([ "$feeds_ok" -eq 1 ] || printf ' (feedback fetch failed)') · checks: $rollup · next in ${sleep_for}s"
 
   sleep "$sleep_for"
 done

@@ -73,10 +73,11 @@ Opening the PR triggers an automatic Copilot review. Watch for it — **as a `Mo
 Monitor(
   description: "PR feedback and checks on #<pr-number>",
   command: "WATCH_SETTLE=1 ~/.claude/skills/implement/scripts/watch-pr-feedback.sh <pr-number>",
+  timeout_ms: 1800000,
 )
 ```
 
-The script polls until told to stop, so running it in the foreground buys nothing and burns the whole tool timeout while showing you nothing. `Monitor` turns each new item into a notification that arrives while you keep working; `WATCH_SETTLE=1` lets the watch end itself once checks are done and the review has landed, rather than sitting armed until timeout.
+The script polls until told to stop, so running it in the foreground buys nothing and burns the whole tool timeout while showing you nothing. `Monitor` turns each new item into a notification that arrives while you keep working; `WATCH_SETTLE=1` lets the watch end itself once checks are done and the review has landed, rather than sitting armed until timeout. When no review arrives within 10 minutes, the watch settles anyway and says `no review arrived`, so a PR that gets no review does not read as silence. Keep the 30-minute `timeout_ms`: `Monitor`'s 5-minute default ends the watch before the 10-minute review wait is over. After a `no review arrived` settle, say in the step 7 report that no review came, so a late review gets a second look.
 
 It emits one line per new inline review comment, review summary, or PR comment, and one per check that fails or is canceled — so a crashed job does not read as silence. It remembers what it has already reported in a state file, `${TMPDIR:-/tmp}/pr-feedback-seen-<owner>-<repo>-<pr-number>.txt`, so nothing is announced twice. That file outlives the session and the worktree. When the PR predates this session, delete the file before you start the watcher, so it reports every comment again. Skip a thread whose newest comment is your own reply, and answer any comment that came after it. Progress goes to stderr, so `Read` the monitor's output file to see elapsed time and the check rollup without waiting for an event.
 

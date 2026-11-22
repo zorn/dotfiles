@@ -1,0 +1,192 @@
+#!/usr/bin/env bash
+#
+# Run implement's watch-pr-feedback.sh against a fake `gh` and check when it
+# settles.
+#
+# Under an agent's Monitor, the settled line is the only signal that the watch
+# is over. A watch that never settles leaves the agent waiting in silence, and
+# one that settles early ends before the review arrives. A fake
+# `gh` command reads canned JSON from files, so the cases run offline.
+
+set -euo pipefail
+
+# bin/test-check runs a nested bin/check with stub tools. Its stub jq prints
+# nothing, so the watch never settles there and each case waits out its
+# deadline.
+[ -z "${TEST_CHECK_NESTED:-}" ] || exit 0
+
+repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+watch="$repo_root/claude/skills/implement/scripts/watch-pr-feedback.sh"
+
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+mkdir -p "$scratch/bin"
+
+# gh: `pr checks` reads $FAKE_DIR/checks.json. `api --paginate <endpoint>
+# --jq <filter>` runs the filter over comments.json, reviews.json, or
+# issue-comments.json in $FAKE_DIR. A missing file reads as an empty list,
+# and a <file>.fail marker makes that endpoint fail.
+# `api user` reports the signed-in login as "me", or fails when a user.fail
+# marker exists.
+cat >"$scratch/bin/gh" <<'FAKE'
+#!/usr/bin/env bash
+set -euo pipefail
+case "$1 $2" in
+  'pr checks') cat "$FAKE_DIR/checks.json" ;;
+  'api user')
+    [ ! -e "$FAKE_DIR/user.fail" ] || { echo 'HTTP 403' >&2; exit 1; }
+    echo '{"login":"me"}' | jq -r "${4:-.}"
+    ;;
+  'api --paginate')
+    case "$3" in
+      repos/*/pulls/*/comments*) file=comments.json ;;
+      repos/*/pulls/*/reviews*) file=reviews.json ;;
+      repos/*/issues/*/comments*) file=issue-comments.json ;;
+      *) printf 'unexpected gh api endpoint: %s\n' "$3" >&2; exit 1 ;;
+    esac
+    [ "$4" = '--jq' ] || { printf 'expected --jq, got: %s\n' "$4" >&2; exit 1; }
+    [ ! -e "$FAKE_DIR/$file.fail" ] || { echo 'HTTP 502' >&2; exit 1; }
+    if [ -e "$FAKE_DIR/$file" ]; then jq -r "$5" "$FAKE_DIR/$file"; else jq -rn '[]' | jq -r "$5"; fi
+    ;;
+  *) printf 'unexpected gh call: %s\n' "$*" >&2; exit 1 ;;
+esac
+FAKE
+chmod +x "$scratch/bin/gh"
+export PATH="$scratch/bin:$PATH"
+
+failed=0
+case_dir=""
+
+# Start a case in its own directory, with one passing check unless the case
+# overwrites checks.json.
+new_case() {
+  case_dir="$scratch/$1"
+  mkdir -p "$case_dir"
+  echo '[{"name":"build","bucket":"pass","link":"https://example.test/1"}]' >"$case_dir/checks.json"
+}
+
+# Run the watch for at most $1 seconds, with any further VAR=value arguments
+# added to its environment. Stdout lands in $case_dir/out. $case_dir/status
+# holds the exit code, or "killed" when the watch was still running at the
+# deadline.
+run_watch() {
+  local deadline="$1" pid ticks=0
+  shift
+  env FAKE_DIR="$case_dir" TMPDIR="$case_dir" WATCH_SETTLE=1 \
+    WATCH_INTERVAL=0.1 WATCH_FAST_INTERVAL=0.1 WATCH_FAST_WINDOW=0 "$@" \
+    "$watch" 7 owner/repo >"$case_dir/out" 2>"$case_dir/err" &
+  pid=$!
+  while kill -0 "$pid" 2>/dev/null && [ "$ticks" -lt $((deadline * 10)) ]; do
+    sleep 0.1
+    ticks=$((ticks + 1))
+  done
+  if kill -0 "$pid" 2>/dev/null; then
+    kill "$pid" 2>/dev/null || true
+    wait "$pid" 2>/dev/null || true
+    echo killed >"$case_dir/status"
+  else
+    local code=0
+    wait "$pid" || code=$?
+    echo "$code" >"$case_dir/status"
+  fi
+}
+
+report_failure() {
+  printf '  FAIL  %s: wanted %s\n' "$1" "$2"
+  printf '        status: %s\n        stdout:\n' "$(cat "$case_dir/status")"
+  sed 's/^/          /' "$case_dir/out"
+  failed=1
+}
+
+expect_settled() {
+  local name="$1" want="$2"
+  if [ "$(cat "$case_dir/status")" = 0 ] && grep -qF "$want" "$case_dir/out"; then
+    printf '  pass  %s\n' "$name"
+  else
+    report_failure "$name" "exit 0 and a line containing $want"
+  fi
+}
+
+# $2 is text the stderr status line must show. It proves the watch saw the
+# state the case names, rather than hanging for some other reason.
+expect_still_watching() {
+  local name="$1" saw="$2"
+  if [ "$(cat "$case_dir/status")" = killed ] && ! grep -qF 'SETTLED' "$case_dir/out" &&
+    grep -qF "$saw" "$case_dir/err"; then
+    printf '  pass  %s\n' "$name"
+  else
+    report_failure "$name" "the watch still running at the deadline, with stderr showing $saw"
+  fi
+}
+
+# Copilot can review after the fast window closes, so passing checks alone
+# must not end the watch while the review wait is still running.
+new_case review-wait-running
+run_watch 2 WATCH_REVIEW_WAIT=3600
+expect_still_watching 'checks pass and the review wait has not elapsed' 'checks: 1 pass'
+
+# The no-review fallback must still wait for CI, or a green-looking settle
+# would report on checks that have not finished.
+new_case review-wait-over-checks-pending
+echo '[{"name":"build","bucket":"pending","link":"https://example.test/1"}]' >"$case_dir/checks.json"
+run_watch 2 WATCH_REVIEW_WAIT=0
+expect_still_watching 'the review wait has elapsed but checks are pending' 'checks: 1 pending'
+
+# The state file outlives a run, so a re-armed watch already holds ids from
+# the first review. Only a review that arrives during this run may settle it.
+new_case rearmed-after-earlier-review
+echo '[{"id":41,"user":{"login":"Copilot"},"path":"a.sh","line":3,"body":"nit"}]' >"$case_dir/comments.json"
+printf 'c41\nr40\n' >"$case_dir/pr-feedback-seen-owner-repo-7.txt"
+run_watch 2 WATCH_REVIEW_WAIT=3600
+expect_still_watching 'a re-armed watch with only earlier reviews keeps going' 'checks: 1 pass'
+
+# The agent's own thread replies are not a review. Posted between two runs,
+# they would otherwise settle the re-armed watch before the re-review lands.
+new_case own-replies-between-runs
+echo '[{"id":42,"user":{"login":"me"},"path":"a.sh","line":3,"body":"Fixed."}]' >"$case_dir/comments.json"
+run_watch 2 WATCH_REVIEW_WAIT=3600
+expect_still_watching 'only the agent'"'"'s own replies arrive' 'checks: 1 pass'
+
+# A failed fetch is not a quiet poll, or the no-review fallback would report
+# "no review arrived" while a review sits unread behind the failing endpoint.
+new_case review-fetch-failing
+touch "$case_dir/reviews.json.fail"
+run_watch 2 WATCH_REVIEW_WAIT=0
+expect_still_watching 'the reviews fetch fails' '(feedback fetch failed) · checks: 1 pass'
+
+new_case no-review
+run_watch 5 WATCH_REVIEW_WAIT=0
+expect_settled 'checks pass and no review comes' 'WATCH SETTLED — checks: 1 pass; no review arrived in '
+
+# A review with an empty summary body is still a review, so the watch must
+# settle on it without waiting out the no-review fallback.
+new_case inline-only-review
+echo '[{"id":41,"user":{"login":"Copilot"},"path":"a.sh","line":3,"body":"nit"}]' >"$case_dir/comments.json"
+echo '[{"id":40,"user":{"login":"Copilot"},"state":"COMMENTED","body":""}]' >"$case_dir/reviews.json"
+run_watch 5 WATCH_REVIEW_WAIT=3600
+expect_settled 'a review of only inline comments arrives' 'WATCH SETTLED — checks: 1 pass; 1 inline, 0 review(s), 0 comment(s)'
+
+new_case summary-only-review
+echo '[{"id":50,"user":{"login":"Copilot"},"state":"COMMENTED","body":"Looks fine."}]' >"$case_dir/reviews.json"
+run_watch 5 WATCH_REVIEW_WAIT=3600
+expect_settled 'a review summary with no inline comments arrives' 'WATCH SETTLED — checks: 1 pass; 0 inline, 1 review(s), 0 comment(s)'
+
+# An approval with no body is a review even with no inline comments, so the
+# watch must not wait it out and report "no review arrived".
+new_case bodyless-approval
+echo '[{"id":60,"user":{"login":"a-reviewer"},"state":"APPROVED","body":""}]' >"$case_dir/reviews.json"
+run_watch 5 WATCH_REVIEW_WAIT=3600
+expect_settled 'an approval with no body arrives' 'WATCH SETTLED — checks: 1 pass; 0 inline, 1 review(s), 0 comment(s)'
+
+# Without the signed-in login, the agent's own replies count as reviews, so
+# the watch must say so where its progress is read.
+new_case login-lookup-failing
+touch "$case_dir/user.fail"
+run_watch 5 WATCH_REVIEW_WAIT=0
+if grep -qF 'could not look up the signed-in account' "$case_dir/err"; then
+  printf '  pass  %s\n' 'a failed login lookup is reported on stderr'
+else
+  report_failure 'a failed login lookup is reported on stderr' 'a stderr line naming the failed lookup'
+fi
+
+exit "$failed"
