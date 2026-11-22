@@ -25,11 +25,13 @@ mkdir -p "$scratch/bin"
 # gh: `pr checks` reads $FAKE_DIR/checks.json. `api --paginate <endpoint>
 # --jq <filter>` runs the filter over comments.json, reviews.json, or
 # issue-comments.json in $FAKE_DIR. A missing file reads as an empty list.
+# `api user` reports the signed-in login as "me".
 cat >"$scratch/bin/gh" <<'FAKE'
 #!/usr/bin/env bash
 set -euo pipefail
 case "$1 $2" in
   'pr checks') cat "$FAKE_DIR/checks.json" ;;
+  'api user') echo '{"login":"me"}' | jq -r "${4:-.}" ;;
   'api --paginate')
     case "$3" in
       repos/*/pulls/*/comments*) file=comments.json ;;
@@ -128,6 +130,13 @@ echo '[{"id":41,"user":{"login":"Copilot"},"path":"a.sh","line":3,"body":"nit"}]
 printf 'c41\nr40\n' >"$case_dir/pr-feedback-seen-owner-repo-7.txt"
 run_watch 2 WATCH_REVIEW_WAIT=3600
 expect_still_watching 'a re-armed watch with only earlier reviews keeps going'
+
+# The agent's own thread replies are not a review. Posted between two runs,
+# they would otherwise settle the re-armed watch before the re-review lands.
+new_case own-replies-between-runs
+echo '[{"id":42,"user":{"login":"me"},"path":"a.sh","line":3,"body":"Fixed."}]' >"$case_dir/comments.json"
+run_watch 2 WATCH_REVIEW_WAIT=3600
+expect_still_watching 'only the agent'"'"'s own replies arrive'
 
 new_case no-review
 run_watch 5 WATCH_REVIEW_WAIT=0

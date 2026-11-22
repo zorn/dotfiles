@@ -31,8 +31,8 @@
 #                        list fetched successfully with nothing pending, no
 #                        new item for WATCH_SETTLE_POLLS polls, and
 #                        WATCH_FAST_WINDOW elapsed. It also needs a review
-#                        summary or an inline comment to arrive during this
-#                        run, not one from an earlier run. Without one, it
+#                        summary or an inline comment from another account to
+#                        arrive during this run. Without one, it
 #                        settles once WATCH_REVIEW_WAIT elapses and reports
 #                        "no review arrived". Off by default, because there is
 #                        no signal that says "no more feedback is coming" and
@@ -52,6 +52,9 @@ set -uo pipefail
 
 PR="${1:?usage: watch-pr-feedback.sh <pr-number> [repo]  (WATCH_* env vars: see the header of this file)}"
 REPO="${2:-$(gh repo view --json nameWithOwner --jq .nameWithOwner)}"
+# The signed-in account, whose own thread replies are not a review. Empty when
+# the lookup fails, which counts every author.
+ME="$(gh api user --jq .login 2>/dev/null || true)"
 INTERVAL="${WATCH_INTERVAL:-30}"
 FAST_INTERVAL="${WATCH_FAST_INTERVAL:-10}"
 FAST_WINDOW="${WATCH_FAST_WINDOW:-120}"
@@ -157,7 +160,10 @@ while true; do
       new_count=$((new_count + 1))
       # Inline comments count as a review: a review made only of them has an
       # empty summary body, so it never records an `r` id.
-      case "$id" in c* | r*) reviews_arrived=$((reviews_arrived + 1)) ;; esac
+      author="${rest%% — *}"
+      case "$id" in
+        c* | r*) [ "$author" = "$ME" ] || reviews_arrived=$((reviews_arrived + 1)) ;;
+      esac
     fi
   done <"$ITEMS"
 
