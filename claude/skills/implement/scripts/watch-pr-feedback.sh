@@ -28,13 +28,19 @@
 #                        automatic review usually lands inside two minutes,
 #                        which is exactly when a slow poll is most annoying
 #   WATCH_SETTLE         set to 1 to exit once the PR has gone quiet: the check
-#                        list fetched successfully with nothing pending, at
-#                        least one review in, no new item for
-#                        WATCH_SETTLE_POLLS polls, and WATCH_FAST_WINDOW
-#                        elapsed. Off by default, because there is no signal
-#                        that says "no more feedback is coming" and guessing
-#                        wrong ends the watch early.
+#                        list fetched successfully with nothing pending, no
+#                        new item for WATCH_SETTLE_POLLS polls, and
+#                        WATCH_FAST_WINDOW elapsed. It also needs a review in
+#                        (a review summary or an inline comment), or
+#                        WATCH_REVIEW_WAIT elapsed with none, which it reports
+#                        as "no review arrived". Off by default, because there
+#                        is no signal that says "no more feedback is coming"
+#                        and guessing wrong ends the watch early.
 #   WATCH_SETTLE_POLLS   consecutive quiet polls before settling (default 2)
+#   WATCH_REVIEW_WAIT    seconds to wait for a review before settling without
+#                        one (default 600). Longer than the fast window,
+#                        because Copilot sometimes reviews after two minutes;
+#                        keep it inside the caller's Monitor timeout.
 #
 # Each item is reported once: ids seen are recorded in a state file, so
 # re-running does not replay a review you have already worked. That also means
@@ -50,6 +56,7 @@ FAST_INTERVAL="${WATCH_FAST_INTERVAL:-10}"
 FAST_WINDOW="${WATCH_FAST_WINDOW:-120}"
 SETTLE="${WATCH_SETTLE:-0}"
 SETTLE_POLLS="${WATCH_SETTLE_POLLS:-2}"
+REVIEW_WAIT="${WATCH_REVIEW_WAIT:-600}"
 
 STATE="${TMPDIR:-/tmp}/pr-feedback-seen-$(printf '%s' "$REPO" | tr '/' '-')-$PR.txt"
 touch "$STATE"
@@ -179,12 +186,20 @@ while true; do
     [ "$checks_ok" -eq 1 ] &&
     [ "$elapsed" -ge "$FAST_WINDOW" ] &&
     [ "${pending:-1}" -eq 0 ] &&
-    [ "${reviews_seen:-0}" -gt 0 ] &&
     [ "$quiet_polls" -ge "$SETTLE_POLLS" ]; then
-    end_status_line
-    printf 'WATCH SETTLED — checks: %s; %s inline, %s review(s), %s comment(s); quiet for %d polls\n' \
-      "$rollup" "$(seen_count c)" "$reviews_seen" "$(seen_count i)" "$quiet_polls"
-    exit 0
+    # Inline comments count as a review arriving: a review made only of them
+    # has an empty summary body, so it never records an `r` id.
+    if [ "${reviews_seen:-0}" -gt 0 ] || [ "$(seen_count c)" -gt 0 ]; then
+      end_status_line
+      printf 'WATCH SETTLED — checks: %s; %s inline, %s review(s), %s comment(s); quiet for %d polls\n' \
+        "$rollup" "$(seen_count c)" "$reviews_seen" "$(seen_count i)" "$quiet_polls"
+      exit 0
+    elif [ "$elapsed" -ge "$REVIEW_WAIT" ]; then
+      end_status_line
+      printf 'WATCH SETTLED — checks: %s; no review arrived in %s\n' \
+        "$rollup" "$(elapsed_clock "$elapsed")"
+      exit 0
+    fi
   fi
 
   status "[$(elapsed_clock "$elapsed")] poll $polls · $(seen_count c) inline, $reviews_seen review(s), $(seen_count i) comment(s) · checks: $rollup · next in ${sleep_for}s"

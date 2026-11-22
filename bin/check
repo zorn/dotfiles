@@ -30,9 +30,11 @@
 #                that each section runs alone and asks only for its own tool.
 #                It then runs bin/test-hexdocs-hook, because a wrong URL
 #                rewrite sends every Elixir doc fetch to the wrong page
-#                without an error. Last, it runs bin/test-dispatch-scripts,
+#                without an error. It then runs bin/test-dispatch-scripts,
 #                because a wrong "releasable" lets dispatch delete commits
-#                GitHub never got.
+#                GitHub never got. Last, it runs bin/test-watch-pr-feedback,
+#                because a PR watch that never settles leaves the agent
+#                waiting in silence.
 #   skills     — bin/check-skills over claude/skills. A skill whose
 #                frontmatter is malformed never activates and never says so,
 #                which makes it the failure most worth automating.
@@ -193,6 +195,9 @@ check_shell() {
 
   printf '\n==> test-dispatch-scripts: dispatch status and preflight verdicts\n'
   ./bin/test-dispatch-scripts || failed=1
+
+  printf '\n==> test-watch-pr-feedback: PR watch settling\n'
+  ./bin/test-watch-pr-feedback || failed=1
   return "$failed"
 }
 
@@ -239,6 +244,8 @@ advise() {
       printf 'A test-hexdocs-hook failure means Elixir doc fetches would land on\n' >&2
       printf 'the wrong URL. A test-dispatch-scripts failure means dispatch could\n' >&2
       printf 'launch onto work already dispatched, or delete unpushed commits.\n' >&2
+      printf 'A test-watch-pr-feedback failure means the PR watch could end\n' >&2
+      printf 'before a review lands, or never end at all.\n' >&2
       ;;
     skills)
       printf 'A check-skills finding means a skill would not load, or would load\n' >&2
