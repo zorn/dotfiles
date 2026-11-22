@@ -14,7 +14,7 @@ A PR body has one reader: someone without your context, who will skim anything l
 
 ## 1. Read the change and name its flavor
 
-`git fetch origin main && git diff origin/main...HEAD` for the change — a worktree's local `main` goes stale, so diff against the remote one — and `gh issue view <n> --comments` for the issue behind it — decisions get made in comment threads, and a body-only read misses them.
+`git fetch origin main && git diff origin/main...HEAD` for the change. Diff against the remote `main`, because a worktree's local `main` goes stale. Then `gh issue view <n> --comments` for the issue behind it — decisions get made in comment threads, and a body-only read misses them.
 
 Three flavors, told apart by what the reviewer cannot get from the diff alone:
 
