@@ -58,6 +58,8 @@ NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):(?:[ \t]+(.*?))?[ \t]*$")
 # A backtick fence cannot have a backtick after it; that line is inline code.
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}(?=[^`]*$)|~{3,})(.*)$")
+# Any run of blockquote prefixes.
+QUOTE_RE = re.compile(r"^(?:[ \t]*>[ \t]?)*")
 CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
 REF_LINK_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*<?([^>\s]+)>?", re.M)
@@ -241,22 +243,44 @@ def parse_frontmatter(text: str) -> dict:
     return {key: ("" if value is None else value) for key, value in data.items()}
 
 
+def match_fence(line: str) -> re.Match[str] | None:
+    """Return the fence match for `line`, or None.
+
+    The rules for spotting a fence line live here. The rules for closing a
+    block depend on its opener, so they stay in `strip_code`.
+
+    - Blockquote prefixes are stripped first, so `> > ` still holds a fence.
+    - Any indent is allowed. CommonMark treats a fence indented four or more
+      spaces as indented code. A fence inside a list item sits that deep too,
+      and telling the two apart needs list tracking.
+    - A backtick fence cannot have a backtick in its info string.
+
+    Group 1 is the fence itself and group 2 is the info string.
+    """
+    return FENCE_RE.match(QUOTE_RE.sub("", line, count=1))
+
+
 def strip_code(text: str) -> str:
     """Blank out code, so a link written as an example is not checked as a real one."""
     kept = []
     opener = None  # the opening fence of the current block, or None
+    opener_depth = 0  # how many `>` quote it
     for line in text.splitlines():
-        fence = FENCE_RE.match(line)
-        if fence and opener is None:
-            opener = fence.group(1)
+        fence_match = match_fence(line)
+        depth = QUOTE_RE.match(line).group(0).count(">")
+        if fence_match and opener is None:
+            opener = fence_match.group(1)
+            opener_depth = depth
             kept.append("")
             continue
-        # A shorter or mismatched fence line is example text inside the block.
+        # A shorter, mismatched, or differently quoted fence line is example
+        # text inside the block.
         if (
-            fence
-            and fence.group(1)[0] == opener[0]
-            and len(fence.group(1)) >= len(opener)
-            and not fence.group(2).strip()
+            fence_match
+            and depth == opener_depth
+            and fence_match.group(1)[0] == opener[0]
+            and len(fence_match.group(1)) >= len(opener)
+            and not fence_match.group(2).strip()
         ):
             opener = None
             kept.append("")
@@ -506,6 +530,26 @@ CASES = [
     (
         "after-nested-fence",
         {"SKILL.md": "---\nname: after-nested-fence\ndescription: A thing.\n---\n\n```md\n~~~\n```\n\n[gone](reference/gone.md)\n"},
+        ["does not exist"],
+    ),
+    (
+        "quoted-fence",
+        {"SKILL.md": "---\nname: quoted-fence\ndescription: A thing.\n---\n\n> ```md\n> [gone](reference/gone.md)\n> ```\n"},
+        [],
+    ),
+    (
+        "nested-quoted-fence",
+        {"SKILL.md": "---\nname: nested-quoted-fence\ndescription: A thing.\n---\n\n> >```md\n> > [gone](reference/gone.md)\n> >```\n"},
+        [],
+    ),
+    (
+        "quote-in-fence",
+        {"SKILL.md": "---\nname: quote-in-fence\ndescription: A thing.\n---\n\n```md\n> ```\n> [gone](reference/gone.md)\n> ```\n```\n"},
+        [],
+    ),
+    (
+        "closed-quoted-fence",
+        {"SKILL.md": "---\nname: closed-quoted-fence\ndescription: A thing.\n---\n\n> > ```md\n> > ```\n\n[gone](reference/gone.md)\n"},
         ["does not exist"],
     ),
     (
