@@ -113,7 +113,7 @@ Release is done when every named worktree is removed or reported with its reason
 
 ## Clean
 
-[ADR 0006](https://github.com/zorn/dotfiles/blob/main/docs/adr/0006-dispatch-cleans-up-via-prune.md) records why removal needs both checks below.
+[ADR 0006](https://github.com/zorn/dotfiles/blob/main/docs/adr/0006-dispatch-cleans-up-via-prune.md) records why removing a worktree needs both checks below.
 
 1. **Refresh `main`.** The primary checkout must be on `main` with a clean tree; if not, stop and say what is wrong. Run `git pull --ff-only`. worktrunk compares a branch against the local `main` for `same commit as`, so a stale `main` misreads it.
 
@@ -126,4 +126,6 @@ Release is done when every named worktree is removed or reported with its reason
 
 3. **Remove.** Show the list, then remove each candidate without asking, as the removal rule says, with `wt remove --foreground <branch>`. Its work is already in `main`, and `wt remove` refuses uncommitted changes.
 
-Clean is done when every candidate is removed or reported with its reason for staying. Report the skipped worktrees, so the user knows to run `/dispatch clean` again.
+4. **Offer the leftover branches.** Step 2's dry run also lists entries with `kind` `branch_only`: merged local branches with no worktree. They need only the prune check, because the merged-PR check protects a worktree's agent and these branches have none. List each one with its `reason`, so a new empty branch shown as `same commit as` stands out, and wait for "go". Then run the dry run again, and delete each listed branch that is still `branch_only` with `git branch -D <branch>`. Use `-D`, because `-d` refuses a squash-merged branch. Never run a live `wt step prune` instead: it also removes the fresh worktrees step 2 skips.
+
+Clean is done when every candidate is removed or reported with its reason for staying, and every leftover branch is deleted or kept on the user's call. Report the skipped worktrees, so the user knows to run `/dispatch clean` again.
