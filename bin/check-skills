@@ -58,7 +58,7 @@ NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):(?:[ \t]+(.*?))?[ \t]*$")
 # A backtick fence cannot have a backtick after it; that line is inline code.
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}(?=[^`]*$)|~{3,})(.*)$")
-# Any run of blockquote prefixes, nested quotes included.
+# Any run of blockquote prefixes.
 QUOTE_RE = re.compile(r"^(?:[ \t]*>[ \t]?)*")
 CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
@@ -243,17 +243,16 @@ def parse_frontmatter(text: str) -> dict:
     return {key: ("" if value is None else value) for key, value in data.items()}
 
 
-def fence(line: str):
-    """Match `line` as a code fence, or return None.
+def match_fence(line: str) -> re.Match[str] | None:
+    """Return the fence match for `line`, or None.
 
-    Every CommonMark fence rule the checker follows lives here, so the next
-    one has one place to go:
+    The rules for spotting a fence line live here. The rules for closing a
+    block depend on its opener, so they stay in `strip_code`.
 
-    - Blockquote prefixes are stripped first, any number of them, so a fence
-      inside `> ` or `> > ` is still a fence.
-    - Any indent is allowed. CommonMark makes a fence indented four or more
-      spaces into indented code, but a fence inside a list item sits that deep
-      legitimately, and telling the two apart would mean tracking lists.
+    - Blockquote prefixes are stripped first, so `> > ` still holds a fence.
+    - Any indent is allowed. CommonMark treats a fence indented four or more
+      spaces as indented code. A fence inside a list item sits that deep too,
+      and telling the two apart needs list tracking.
     - A backtick fence cannot have a backtick in its info string.
 
     Group 1 is the fence itself and group 2 is the info string.
@@ -266,7 +265,7 @@ def strip_code(text: str) -> str:
     kept = []
     opener = None  # the opening fence of the current block, or None
     for line in text.splitlines():
-        fence_match = fence(line)
+        fence_match = match_fence(line)
         if fence_match and opener is None:
             opener = fence_match.group(1)
             kept.append("")
@@ -531,6 +530,11 @@ CASES = [
     (
         "quoted-fence",
         {"SKILL.md": "---\nname: quoted-fence\ndescription: A thing.\n---\n\n> ```md\n> [gone](reference/gone.md)\n> ```\n"},
+        [],
+    ),
+    (
+        "nested-quoted-fence",
+        {"SKILL.md": "---\nname: nested-quoted-fence\ndescription: A thing.\n---\n\n> >```md\n> > [gone](reference/gone.md)\n> >```\n"},
         [],
     ),
     (
