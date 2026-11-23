@@ -264,15 +264,20 @@ def strip_code(text: str) -> str:
     """Blank out code, so a link written as an example is not checked as a real one."""
     kept = []
     opener = None  # the opening fence of the current block, or None
+    opener_depth = 0  # how many `>` quote it
     for line in text.splitlines():
         fence_match = match_fence(line)
+        depth = QUOTE_RE.match(line).group(0).count(">")
         if fence_match and opener is None:
             opener = fence_match.group(1)
+            opener_depth = depth
             kept.append("")
             continue
-        # A shorter or mismatched fence line is example text inside the block.
+        # A shorter, mismatched, or differently quoted fence line is example
+        # text inside the block.
         if (
             fence_match
+            and depth == opener_depth
             and fence_match.group(1)[0] == opener[0]
             and len(fence_match.group(1)) >= len(opener)
             and not fence_match.group(2).strip()
@@ -535,6 +540,11 @@ CASES = [
     (
         "nested-quoted-fence",
         {"SKILL.md": "---\nname: nested-quoted-fence\ndescription: A thing.\n---\n\n> >```md\n> > [gone](reference/gone.md)\n> >```\n"},
+        [],
+    ),
+    (
+        "quote-in-fence",
+        {"SKILL.md": "---\nname: quote-in-fence\ndescription: A thing.\n---\n\n```md\n> ```\n> [gone](reference/gone.md)\n> ```\n```\n"},
         [],
     ),
     (
