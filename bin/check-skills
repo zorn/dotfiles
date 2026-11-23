@@ -58,6 +58,8 @@ NAME_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
 KEY_RE = re.compile(r"^([A-Za-z0-9_.-]+):(?:[ \t]+(.*?))?[ \t]*$")
 # A backtick fence cannot have a backtick after it; that line is inline code.
 FENCE_RE = re.compile(r"^[ \t]*(`{3,}(?=[^`]*$)|~{3,})(.*)$")
+# Any run of blockquote prefixes, nested quotes included.
+QUOTE_RE = re.compile(r"^(?:[ \t]*>[ \t]?)*")
 CODE_SPAN_RE = re.compile(r"`+[^`]*`+")
 INLINE_LINK_RE = re.compile(r"\[[^\]]*\]\(\s*<?([^>)\s]+)>?(?:\s+[^)]*)?\)")
 REF_LINK_RE = re.compile(r"^[ \t]*\[[^\]]+\]:[ \t]*<?([^>\s]+)>?", re.M)
@@ -241,22 +243,40 @@ def parse_frontmatter(text: str) -> dict:
     return {key: ("" if value is None else value) for key, value in data.items()}
 
 
+def fence(line: str):
+    """Match `line` as a code fence, or return None.
+
+    Every CommonMark fence rule the checker follows lives here, so the next
+    one has one place to go:
+
+    - Blockquote prefixes are stripped first, any number of them, so a fence
+      inside `> ` or `> > ` is still a fence.
+    - Any indent is allowed. CommonMark makes a fence indented four or more
+      spaces into indented code, but a fence inside a list item sits that deep
+      legitimately, and telling the two apart would mean tracking lists.
+    - A backtick fence cannot have a backtick in its info string.
+
+    Group 1 is the fence itself and group 2 is the info string.
+    """
+    return FENCE_RE.match(QUOTE_RE.sub("", line, count=1))
+
+
 def strip_code(text: str) -> str:
     """Blank out code, so a link written as an example is not checked as a real one."""
     kept = []
     opener = None  # the opening fence of the current block, or None
     for line in text.splitlines():
-        fence = FENCE_RE.match(line)
-        if fence and opener is None:
-            opener = fence.group(1)
+        fence_match = fence(line)
+        if fence_match and opener is None:
+            opener = fence_match.group(1)
             kept.append("")
             continue
         # A shorter or mismatched fence line is example text inside the block.
         if (
-            fence
-            and fence.group(1)[0] == opener[0]
-            and len(fence.group(1)) >= len(opener)
-            and not fence.group(2).strip()
+            fence_match
+            and fence_match.group(1)[0] == opener[0]
+            and len(fence_match.group(1)) >= len(opener)
+            and not fence_match.group(2).strip()
         ):
             opener = None
             kept.append("")
@@ -506,6 +526,16 @@ CASES = [
     (
         "after-nested-fence",
         {"SKILL.md": "---\nname: after-nested-fence\ndescription: A thing.\n---\n\n```md\n~~~\n```\n\n[gone](reference/gone.md)\n"},
+        ["does not exist"],
+    ),
+    (
+        "quoted-fence",
+        {"SKILL.md": "---\nname: quoted-fence\ndescription: A thing.\n---\n\n> ```md\n> [gone](reference/gone.md)\n> ```\n"},
+        [],
+    ),
+    (
+        "closed-quoted-fence",
+        {"SKILL.md": "---\nname: closed-quoted-fence\ndescription: A thing.\n---\n\n> > ```md\n> > ```\n\n[gone](reference/gone.md)\n"},
         ["does not exist"],
     ),
     (
